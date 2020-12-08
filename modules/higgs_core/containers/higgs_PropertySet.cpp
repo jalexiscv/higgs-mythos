@@ -1,0 +1,217 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+PropertySet::PropertySet (bool ignoreCaseOfKeyNames)
+    : properties (ignoreCaseOfKeyNames),
+      fallbackProperties (nullptr),
+      ignoreCaseOfKeys (ignoreCaseOfKeyNames)
+{
+}
+
+PropertySet::PropertySet (const PropertySet& other)
+    : properties (other.properties),
+      fallbackProperties (other.fallbackProperties),
+      ignoreCaseOfKeys (other.ignoreCaseOfKeys)
+{
+}
+
+PropertySet& PropertySet::operator= (const PropertySet& other)
+{
+    properties = other.properties;
+    fallbackProperties = other.fallbackProperties;
+    ignoreCaseOfKeys = other.ignoreCaseOfKeys;
+
+    propertyChanged();
+    return *this;
+}
+
+PropertySet::~PropertySet()
+{
+}
+
+void PropertySet::clear()
+{
+    const ScopedLock sl (lock);
+
+    if (properties.size() > 0)
+    {
+        properties.clear();
+        propertyChanged();
+    }
+}
+
+String PropertySet::getValue (StringRef keyName, const String& defaultValue) const noexcept
+{
+    const ScopedLock sl (lock);
+    auto index = properties.getAllKeys().indexOf (keyName, ignoreCaseOfKeys);
+
+    if (index >= 0)
+        return properties.getAllValues() [index];
+
+    return fallbackProperties != nullptr ? fallbackProperties->getValue (keyName, defaultValue)
+                                         : defaultValue;
+}
+
+int PropertySet::getIntValue (StringRef keyName, int defaultValue) const noexcept
+{
+    const ScopedLock sl (lock);
+    auto index = properties.getAllKeys().indexOf (keyName, ignoreCaseOfKeys);
+
+    if (index >= 0)
+        return properties.getAllValues() [index].getIntValue();
+
+    return fallbackProperties != nullptr ? fallbackProperties->getIntValue (keyName, defaultValue)
+                                         : defaultValue;
+}
+
+double PropertySet::getDoubleValue (StringRef keyName, double defaultValue) const noexcept
+{
+    const ScopedLock sl (lock);
+    auto index = properties.getAllKeys().indexOf (keyName, ignoreCaseOfKeys);
+
+    if (index >= 0)
+        return properties.getAllValues()[index].getDoubleValue();
+
+    return fallbackProperties != nullptr ? fallbackProperties->getDoubleValue (keyName, defaultValue)
+                                         : defaultValue;
+}
+
+bool PropertySet::getBoolValue (StringRef keyName, bool defaultValue) const noexcept
+{
+    const ScopedLock sl (lock);
+    auto index = properties.getAllKeys().indexOf (keyName, ignoreCaseOfKeys);
+
+    if (index >= 0)
+        return properties.getAllValues() [index].getIntValue() != 0;
+
+    return fallbackProperties != nullptr ? fallbackProperties->getBoolValue (keyName, defaultValue)
+                                         : defaultValue;
+}
+
+std::unique_ptr<XmlElement> PropertySet::getXmlValue (StringRef keyName) const
+{
+    return parseXML (getValue (keyName));
+}
+
+void PropertySet::setValue (StringRef keyName, const var& v)
+{
+    jassert (keyName.isNotEmpty()); // shouldn't use an empty key name!
+
+    if (keyName.isNotEmpty())
+    {
+        auto value = v.toString();
+        const ScopedLock sl (lock);
+        auto index = properties.getAllKeys().indexOf (keyName, ignoreCaseOfKeys);
+
+        if (index < 0 || properties.getAllValues() [index] != value)
+        {
+            properties.set (keyName, value);
+            propertyChanged();
+        }
+    }
+}
+
+void PropertySet::removeValue (StringRef keyName)
+{
+    if (keyName.isNotEmpty())
+    {
+        const ScopedLock sl (lock);
+        auto index = properties.getAllKeys().indexOf (keyName, ignoreCaseOfKeys);
+
+        if (index >= 0)
+        {
+            properties.remove (keyName);
+            propertyChanged();
+        }
+    }
+}
+
+void PropertySet::setValue (StringRef keyName, const XmlElement* xml)
+{
+    setValue (keyName, xml == nullptr ? var()
+                                      : var (xml->toString (XmlElement::TextFormat().singleLine().withoutHeader())));
+}
+
+bool PropertySet::containsKey (StringRef keyName) const noexcept
+{
+    const ScopedLock sl (lock);
+    return properties.getAllKeys().contains (keyName, ignoreCaseOfKeys);
+}
+
+void PropertySet::addAllPropertiesFrom (const PropertySet& source)
+{
+    const ScopedLock sl (source.getLock());
+
+    for (int i = 0; i < source.properties.size(); ++i)
+        setValue (source.properties.getAllKeys() [i],
+                  source.properties.getAllValues() [i]);
+}
+
+void PropertySet::setFallbackPropertySet (PropertySet* fallbackProperties_) noexcept
+{
+    const ScopedLock sl (lock);
+    fallbackProperties = fallbackProperties_;
+}
+
+std::unique_ptr<XmlElement> PropertySet::createXml (const String& nodeName) const
+{
+    auto xml = std::make_unique<XmlElement> (nodeName);
+
+    const ScopedLock sl (lock);
+
+    for (int i = 0; i < properties.getAllKeys().size(); ++i)
+    {
+        auto e = xml->createNewChildElement ("VALUE");
+        e->setAttribute ("name", properties.getAllKeys()[i]);
+        e->setAttribute ("val", properties.getAllValues()[i]);
+    }
+
+    return xml;
+}
+
+void PropertySet::restoreFromXml (const XmlElement& xml)
+{
+    const ScopedLock sl (lock);
+    clear();
+
+    for (auto* e : xml.getChildWithTagNameIterator ("VALUE"))
+    {
+        if (e->hasAttribute ("name")
+             && e->hasAttribute ("val"))
+        {
+            properties.set (e->getStringAttribute ("name"),
+                            e->getStringAttribute ("val"));
+        }
+    }
+
+    if (properties.size() > 0)
+        propertyChanged();
+}
+
+void PropertySet::propertyChanged()
+{
+}
+
+} // namespace higgs
