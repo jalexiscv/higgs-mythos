@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: HIGGS Support
+    url: https://github.com/jalexiscv/higgs-mythos/discussions
+    about: Please use the HIGGS forum to ask questions.
+  - name: Feature Requests
+    url: https://github.com/jalexiscv/higgs-mythos/discussionsc/feature-requests
+    about: Please submit feature requests on the HIGGS forum.
