@@ -1,0 +1,126 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+//==============================================================================
+/**
+    An output stream that writes into a local file.
+
+    @see OutputStream, FileInputStream, File::createOutputStream
+
+    @tags{Core}
+*/
+class HIGGS_API  FileOutputStream  : public OutputStream
+{
+public:
+    //==============================================================================
+    /** Creates a FileOutputStream.
+
+        If the file doesn't exist, it will first be created. If the file can't be
+        created or opened (for example, because the parent directory of the file
+        does not exist), the failedToOpen() method will return true.
+
+        If the file already exists when opened, the stream's write-position will
+        be set to the end of the file. To overwrite an existing file, you can truncate
+        it like this:
+
+        @code
+        FileOutputStream stream (file);
+
+        if (stream.openedOk())
+        {
+            stream.setPosition (0);
+            stream.truncate();
+            ...
+        }
+        @endcode
+
+
+        Destroying a FileOutputStream object does not force the operating system
+        to write the buffered data to disk immediately. If this is required you
+        should call flush() before triggering the destructor.
+
+        @see TemporaryFile
+    */
+    FileOutputStream (const File& fileToWriteTo,
+                      size_t bufferSizeToUse = 16384);
+
+    /** Destructor. */
+    ~FileOutputStream() override;
+
+    //==============================================================================
+    /** Returns the file that this stream is writing to.
+    */
+    const File& getFile() const                         { return file; }
+
+    /** Returns the status of the file stream.
+        The result will be ok if the file opened successfully. If an error occurs while
+        opening or writing to the file, this will contain an error message.
+    */
+    const Result& getStatus() const noexcept            { return status; }
+
+    /** Returns true if the stream couldn't be opened for some reason.
+        @see getStatus()
+    */
+    bool failedToOpen() const noexcept                  { return status.failed(); }
+
+    /** Returns true if the stream opened without problems.
+        @see getStatus()
+    */
+    bool openedOk() const noexcept                      { return status.wasOk(); }
+
+    /** Attempts to truncate the file to the current write position.
+        To truncate a file to a specific size, first use setPosition() to seek to the
+        appropriate location, and then call this method.
+    */
+    Result truncate();
+
+    //==============================================================================
+    void flush() override;
+    int64 getPosition() override;
+    bool setPosition (int64) override;
+    bool write (const void*, size_t) override;
+    bool writeRepeatedByte (uint8 byte, size_t numTimesToRepeat) override;
+
+
+private:
+    //==============================================================================
+    File file;
+    detail::NativeFileHandle fileHandle{};
+    Result status { Result::ok() };
+    int64 currentPosition = 0;
+    size_t bufferSize, bytesInBuffer = 0;
+    HeapBlock<char> buffer;
+
+    void openHandle();
+    void closeHandle();
+    void flushInternal();
+    bool flushBuffer();
+    int64 setPositionInternal (int64);
+    ssize_t writeInternal (const void*, size_t);
+
+    HIGGS_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FileOutputStream)
+};
+
+} // namespace higgs
