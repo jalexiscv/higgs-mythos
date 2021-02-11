@@ -1,0 +1,148 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+//==============================================================================
+/**
+    A universally unique 128-bit identifier.
+
+    This class generates very random unique numbers. It's vanishingly unlikely
+    that two identical UUIDs would ever be created by chance. The values are
+    formatted to meet the RFC 4122 version 4 standard.
+
+    The class includes methods for saving the ID as a string or as raw binary data.
+
+    @tags{Core}
+*/
+class HIGGS_API  Uuid
+{
+public:
+    //==============================================================================
+    /** Creates a new unique ID, compliant with RFC 4122 version 4. */
+    Uuid();
+
+    /** Creates a copy of another UUID. */
+    Uuid (const Uuid&) noexcept;
+
+    /** Copies another UUID. */
+    Uuid& operator= (const Uuid&) noexcept;
+
+    //==============================================================================
+    /** Returns true if the ID is zero. */
+    bool isNull() const noexcept;
+
+    /** Returns a null Uuid object. */
+    static Uuid null() noexcept;
+
+    bool operator== (const Uuid&) const noexcept;
+    bool operator!= (const Uuid&) const noexcept;
+    bool operator<  (const Uuid&) const noexcept;
+    bool operator>  (const Uuid&) const noexcept;
+    bool operator<= (const Uuid&) const noexcept;
+    bool operator>= (const Uuid&) const noexcept;
+
+    //==============================================================================
+    /** Returns a stringified version of this UUID.
+
+        A Uuid object can later be reconstructed from this string using operator= or
+        the constructor that takes a string parameter.
+
+        @returns a 32 character hex string.
+    */
+    String toString() const;
+
+    /** Returns a stringified version of this UUID, separating it into sections with dashes.
+        @returns a string in the format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    */
+    String toDashedString() const;
+
+    /** Creates an ID from an encoded string version.
+        @see toString
+    */
+    Uuid (const String& uuidString);
+
+    /** Copies from a stringified UUID.
+        The string passed in should be one that was created with the toString() method.
+    */
+    Uuid& operator= (const String& uuidString);
+
+
+    //==============================================================================
+    /** Returns the time-low section of the UUID. */
+    uint32 getTimeLow() const noexcept;
+    /** Returns the time-mid section of the UUID. */
+    uint16 getTimeMid() const noexcept;
+    /** Returns the time-high-and-version section of the UUID. */
+    uint16 getTimeHighAndVersion() const noexcept;
+    /** Returns the clock-seq-and-reserved section of the UUID. */
+    uint8  getClockSeqAndReserved() const noexcept;
+    /** Returns the clock-seq-low section of the UUID. */
+    uint8  getClockSeqLow() const noexcept;
+    /** Returns the node section of the UUID. */
+    uint64 getNode() const noexcept;
+
+    /** Returns a hash of the UUID. */
+    uint64 hash() const noexcept;
+
+    //==============================================================================
+    /** Returns a pointer to the internal binary representation of the ID.
+
+        This is an array of 16 bytes. To reconstruct a Uuid from its data, use
+        the constructor or operator= method that takes an array of uint8s.
+    */
+    const uint8* getRawData() const noexcept                { return uuid; }
+
+    /** Returns the size in bytes of the raw data making up this UUID. */
+    static constexpr size_t size() { return sizeInBytes; }
+
+    /** Creates a UUID from a 16-byte array.
+        @see getRawData
+    */
+    Uuid (const uint8* rawData) noexcept;
+
+    /** Sets this UUID from 16-bytes of raw data. */
+    Uuid& operator= (const uint8* rawData) noexcept;
+
+private:
+    //==============================================================================
+    static constexpr size_t sizeInBytes = 16;
+    uint8 uuid[sizeInBytes];
+    String getHexRegion (int, int) const;
+    int compare (Uuid) const noexcept;
+    void swap (Uuid&) noexcept;
+
+    HIGGS_LEAK_DETECTOR (Uuid)
+};
+
+} // namespace higgs
+
+/** @cond */
+namespace std
+{
+    template <> struct hash<higgs::Uuid>
+    {
+        size_t operator() (const higgs::Uuid& u) const noexcept   { return (size_t) u.hash(); }
+    };
+}
+/** @endcond */
