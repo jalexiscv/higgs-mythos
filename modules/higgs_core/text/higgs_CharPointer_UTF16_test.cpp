@@ -1,0 +1,203 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+class CharPointer_UTF16Test final : public UnitTest
+{
+public:
+    CharPointer_UTF16Test() : UnitTest { "CharPointer_UTF16Test", UnitTestCategories::text } {}
+
+    void runTest() final
+    {
+        const auto toCharType = [] (const std::vector<char16_t>& str)
+        {
+            return reinterpret_cast<const CharPointer_UTF16::CharType*> (str.data());
+        };
+
+        const auto getNumBytes = [] (const auto& str)
+        {
+            return (int) (sizeof (CharPointer_UTF16::CharType) * str.size());
+        };
+
+        beginTest ("String validation - empty string / null-terminator");
+        {
+            const std::vector<CharPointer_UTF16::CharType> string { 0x0 };
+            expect (CharPointer_UTF16::isValidString (string.data(), getNumBytes (string)));
+        }
+
+        beginTest ("String validation - ascii");
+        {
+            const std::vector<char16_t> string { 0x54, 0x65, 0x73, 0x74, 0x21, 0x0 }; // Test!
+            expect (CharPointer_UTF16::isValidString (toCharType (string), getNumBytes (string)));
+        }
+
+        beginTest ("String validation - 2-byte code points");
+        {
+            const std::vector<char16_t> string { 0x54, 0x65, 0x73, 0x74, 0x20ac, 0x0 }; // Test€
+            expect (CharPointer_UTF16::isValidString (toCharType (string), getNumBytes (string)));
+        }
+
+        beginTest ("String validation - surrogate pairs");
+        {
+            const std::vector<char16_t> string { 0x54, 0x65, 0x73, 0x74, 0xd83d, 0xde03, 0x0 }; // Test😃
+            expect (CharPointer_UTF16::isValidString (toCharType (string), getNumBytes (string)));
+        }
+
+        beginTest ("String validation - high-surrogate without a low-surrogate");
+        {
+            const std::vector<char16_t> string { 0x54, 0x65, 0x73, 0x74, 0xd83d, 0x0 };
+            expect (! CharPointer_UTF16::isValidString (toCharType (string), getNumBytes (string)));
+        }
+
+        beginTest ("String validation - low-surrogate without a high-surrogate");
+        {
+            const std::vector<char16_t> string { 0x54, 0x65, 0x73, 0x74, 0xde03, 0x0 };
+            expect (! CharPointer_UTF16::isValidString (toCharType (string), getNumBytes (string)));
+        }
+
+        beginTest ("String validation - characters after a null terminator are ignored");
+        {
+            const std::vector<char16_t> string { 0x54, 0x65, 0x73, 0x74, 0x0, 0xde03 };
+            expect (CharPointer_UTF16::isValidString (toCharType (string), getNumBytes (string)));
+        }
+
+        beginTest ("String validation - characters exceeding max bytes are ignored");
+        {
+            const std::vector<char16_t> string { 0x54, 0x65, 0x73, 0x74, 0xde03 };
+            expect (CharPointer_UTF16::isValidString (toCharType (string), 8));
+        }
+
+        beginTest ("String validation - all unicode characters");
+        {
+            for (uint32_t c = 0; c < 0x110000; ++c)
+            {
+                std::array<CharPointer_UTF16::CharType, 2> string = {};
+                CharPointer_UTF16 utf16 { string.data() };
+                utf16.write ((higgs_wchar) c);
+                expect (CharPointer_UTF16::isValidString (string.data(), 4) == CharPointer_UTF32::canRepresent ((higgs_wchar) c));
+            }
+        }
+
+        beginTest ("Iterating string starting with unpaired high surrogate produces a wide character with the surrogate value");
+        {
+            const std::vector<char16_t> stringA { 0xd800, 0xa, 0xb };
+            expect (rangesEqual (Span (stringA), Span (stringA)));
+
+            const std::vector<char16_t> stringB { 0xd800, 0xe000, 0xb };
+            expect (rangesEqual (Span (stringB), Span (stringB)));
+        }
+
+        beginTest ("Iterating string ending with unpaired high surrogate produces a wide character with the surrogate value");
+        {
+            const std::vector<char16_t> string { 0xa, 0xb, 0xd800, 0x0 };
+            expect (rangesEqual (Span (string), Span (string)));
+        }
+
+        beginTest ("Iterating string starting with unpaired low surrogate produces a wide character with the surrogate value");
+        {
+            const std::vector<char16_t> stringA { 0xdc00, 0xa, 0xb };
+            expect (rangesEqual (Span (stringA), Span (stringA)));
+
+            const std::vector<char16_t> stringB { 0xdc00, 0xe000, 0xb };
+            expect (rangesEqual (Span (stringB), Span (stringB)));
+        }
+
+        beginTest ("Iterating string ending with unpaired low surrogate produces a wide character with the surrogate value");
+        {
+            const std::vector<char16_t> string { 0xa, 0xb, 0xdc00 };
+            expect (rangesEqual (Span (string), Span (string)));
+        }
+
+        beginTest ("Iterating string with multiple unpaired surrogates produces produces wide characters with those surrogate values");
+        {
+            const std::vector<char16_t> string { 0xd800, 0xd800, 0xdc00, 0xdc00, 0xa, 0xb };
+            const std::vector<higgs_wchar> expected { 0xd800, 0x10000, 0xdc00, 0xa, 0xb };
+            expect (rangesEqual (Span (expected), Span (string)));
+        }
+
+        beginTest ("Can decrement to unpaired low surrogate");
+        {
+            const CharPointer_UTF16::CharType chars[] { 0xa, (CharPointer_UTF16::CharType) 0xdc00, 0xb};
+            CharPointer_UTF16 ptr { chars + 2 };
+
+            expect (*ptr == 0xb);
+            --ptr;
+            expect (ptr == CharPointer_UTF16 { chars + 1 });
+            expect (*ptr == 0xdc00);
+        }
+
+        beginTest ("Can decrement to unpaired high surrogate");
+        {
+            const CharPointer_UTF16::CharType chars[] { 0xa, (CharPointer_UTF16::CharType) 0xd800, 0xb };
+            CharPointer_UTF16 ptr { chars + 2 };
+
+            expect (*ptr == 0xb);
+            --ptr;
+            expect (ptr == CharPointer_UTF16 { chars + 1 });
+            expect (*ptr == 0xd800);
+        }
+
+        beginTest ("Can decrement through surrogate pair");
+        {
+            const CharPointer_UTF16::CharType chars[] { 0xa,
+                                                        (CharPointer_UTF16::CharType) 0xd800,
+                                                        (CharPointer_UTF16::CharType) 0xdc00,
+                                                        0xb };
+            CharPointer_UTF16 ptr { chars + 3 };
+
+            expect (*ptr == 0xb);
+
+            --ptr;
+            expect (ptr == CharPointer_UTF16 { chars + 1 });
+            expect (*ptr == 0x10000);
+
+            --ptr;
+            expect (ptr == CharPointer_UTF16 { chars });
+            expect (*ptr == (CharPointer_UTF16::CharType) 0xa);
+        }
+    }
+
+private:
+    template <typename Expected>
+    static bool rangesEqual (Span<const Expected> expected, Span<const char16_t> units)
+    {
+        const auto dataPtr = reinterpret_cast<const CharPointer_UTF16::CharType*> (units.data());
+        std::vector<higgs_wchar> converted;
+
+        for (const auto it : makeRange (CharPointer_UTF16 { dataPtr },
+                                        CharPointer_UTF16 { dataPtr + units.size() }))
+        {
+            converted.push_back (it);
+        }
+
+        // Some stdlibs require the arguments to std::equal to have the full complement of iterator
+        // member type aliases, so compare using std::vector iterators instead of CharPointer_UTF16
+        // directly.
+        return std::equal (expected.begin(), expected.end(), converted.begin(), converted.end());
+    }
+};
+
+static CharPointer_UTF16Test charPointer_UTF16Test;
+
+} // namespace higgs
