@@ -1,0 +1,164 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+//==============================================================================
+/**
+    A container for holding a set of strings which are keyed by another string.
+
+    @see StringArray
+
+    @tags{Core}
+*/
+class HIGGS_API  StringPairArray
+{
+public:
+    //==============================================================================
+    /** Creates an empty array */
+    StringPairArray (bool ignoreCaseWhenComparingKeys = true);
+
+    /** Creates a copy of another array */
+    StringPairArray (const StringPairArray& other);
+
+    /** Destructor. */
+    ~StringPairArray() = default;
+
+    /** Copies the contents of another string array into this one */
+    StringPairArray& operator= (const StringPairArray& other);
+
+    //==============================================================================
+    /** Compares two arrays.
+        Comparisons are case-sensitive.
+        @returns    true only if the other array contains exactly the same strings with the same keys
+    */
+    bool operator== (const StringPairArray& other) const;
+
+    /** Compares two arrays.
+        Comparisons are case-sensitive.
+        @returns    false if the other array contains exactly the same strings with the same keys
+    */
+    bool operator!= (const StringPairArray& other) const;
+
+    //==============================================================================
+    /** Finds the value corresponding to a key string.
+
+        If no such key is found, this will just return an empty string. To check whether
+        a given key actually exists (because it might actually be paired with an empty string), use
+        the getAllKeys() method to obtain a list.
+
+        Obviously the reference returned shouldn't be stored for later use, as the
+        string it refers to may disappear when the array changes.
+
+        @see getValue
+    */
+    const String& operator[] (StringRef key) const;
+
+    /** Finds the value corresponding to a key string.
+        If no such key is found, this will just return the value provided as a default.
+        @see operator[]
+    */
+    String getValue (StringRef, const String& defaultReturnValue) const;
+
+    /** Returns true if the given key exists. */
+    bool containsKey (StringRef key) const noexcept;
+
+    /** Returns a list of all keys in the array. */
+    const StringArray& getAllKeys() const noexcept          { return keys; }
+
+    /** Returns a list of all values in the array. */
+    const StringArray& getAllValues() const noexcept        { return values; }
+
+    /** Returns the number of strings in the array */
+    inline int size() const noexcept                        { return keys.size(); }
+
+
+    //==============================================================================
+    /** Adds or amends a key/value pair.
+        If a value already exists with this key, its value will be overwritten,
+        otherwise the key/value pair will be added to the array.
+    */
+    void set (const String& key, const String& value);
+
+    /** Adds the items from another array to this one.
+        This is equivalent to using set() to add each of the pairs from the other array.
+    */
+    void addArray (const StringPairArray& other);
+
+    //==============================================================================
+    /** Removes all elements from the array. */
+    void clear();
+
+    /** Removes a string from the array based on its key.
+        If the key isn't found, nothing will happen.
+    */
+    void remove (StringRef key);
+
+    /** Removes a string from the array based on its index.
+        If the index is out-of-range, no action will be taken.
+    */
+    void remove (int index);
+
+    //==============================================================================
+    /** Indicates whether to use a case-insensitive search when looking up a key string.
+    */
+    void setIgnoresCase (bool shouldIgnoreCase);
+
+    /** Indicates whether a case-insensitive search is used when looking up a key string.
+    */
+    bool getIgnoresCase() const noexcept;
+
+    //==============================================================================
+    /** Returns a descriptive string containing the items.
+        This is handy for dumping the contents of an array.
+    */
+    String getDescription() const;
+
+    //==============================================================================
+    /** Reduces the amount of storage being used by the array.
+
+        Arrays typically allocate slightly more storage than they need, and after
+        removing elements, they may have quite a lot of unused space allocated.
+        This method will reduce the amount of allocated storage to a minimum.
+    */
+    void minimiseStorageOverheads();
+
+    //==============================================================================
+    /** Adds the contents of a map to this StringPairArray. */
+    void addMap (const std::map<String, String>& mapToAdd);
+
+    /** Adds the contents of an unordered map to this StringPairArray. */
+    void addUnorderedMap (const std::unordered_map<String, String>& mapToAdd);
+
+private:
+    //==============================================================================
+    template <typename Map>
+    void addMapImpl (const Map& mapToAdd);
+
+    StringArray keys, values;
+    bool ignoreCase;
+
+    HIGGS_LEAK_DETECTOR (StringPairArray)
+};
+
+} // namespace higgs
