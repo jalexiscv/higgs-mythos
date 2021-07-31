@@ -1,0 +1,129 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+//==============================================================================
+/**
+    A drawable object which is a bitmap image.
+
+    @see Drawable
+
+    @tags{GUI}
+*/
+class HIGGS_API  DrawableImage  : public Drawable
+{
+public:
+    //==============================================================================
+    DrawableImage() = default;
+    DrawableImage (const DrawableImage&) = default;
+
+    /** Sets the image that this drawable will render. */
+    explicit DrawableImage (const Image& imageToUse);
+
+    /** Sets the image that this drawable will render. Only the part specified by sourceBounds will
+        be drawn in the area specified by destinationBounds.
+    */
+    DrawableImage (const Image& image,
+                   Rectangle<int> destinationBounds,
+                   Rectangle<int> sourceBounds);
+
+    //==============================================================================
+    /** Sets the image that this drawable will render. */
+    void setImage (const Image& imageToUse);
+
+    /** Returns the current image. */
+    const Image& getImage() const noexcept                      { return image; }
+
+    /** Sets the opacity to use when drawing the image. */
+    void setOpacity (float newOpacity);
+
+    /** Returns the image's opacity. */
+    float getOpacity() const noexcept                           { return opacity; }
+
+    /** Sets a colour to draw over the image's alpha channel.
+
+        By default this is transparent so isn't drawn, but if you set a non-transparent
+        colour here, then it will be overlaid on the image, using the image's alpha
+        channel as a mask.
+
+        This is handy for doing things like darkening or lightening an image by overlaying
+        it with semi-transparent black or white.
+    */
+    void setOverlayColour (Colour newOverlayColour);
+
+    /** Returns the overlay colour. */
+    Colour getOverlayColour() const noexcept                    { return overlayColour; }
+
+    /** Sets the bounding box within which the image should be displayed. */
+    void setBoundingBox (Parallelogram<float> newBounds);
+
+    /** Sets the bounding box within which the image should be displayed. */
+    void setBoundingBox (Rectangle<float> newBounds);
+
+    /** Returns the position to which the image's top-left corner should be remapped in the target
+        coordinate space when rendering this object.
+        @see setTransform
+    */
+    Parallelogram<float> getBoundingBox() const noexcept        { return bounds; }
+
+    /** Sets the resampling quality to use when drawing the image.
+
+        This will have the most noticeable effect when the DrawableImage size does not match the
+        image size.
+
+        Defaults to highResamplingQuality.
+    */
+    void setImageResamplingQuality (Graphics::ResamplingQuality newQuality);
+
+    //==============================================================================
+    /** @internal */
+    bool hitTest (Point<float>) const override;
+    /** @internal */
+    std::unique_ptr<Drawable> createCopy() const override;
+    /** @internal */
+    Rectangle<float> getDrawableBoundsUntransformed() const override;
+    /** @internal */
+    Path getOutlineAsPath() const override;
+    /** @internal */
+    bool isImage() const override;
+    /** @internal */
+    void paint (Graphics& g) const override;
+
+private:
+    //==============================================================================
+    bool setImageInternal (const Image&);
+
+    //==============================================================================
+    Image image;
+    Rectangle<int> destinationBounds;
+    Rectangle<int> sourceBounds;
+    float opacity = 1.0f;
+    Colour overlayColour { 0 };
+    Parallelogram<float> bounds { { 0.0f, 0.0f, 1.0f, 1.0f } };
+    Graphics::ResamplingQuality resamplingQuality = Graphics::ResamplingQuality::highResamplingQuality;
+
+    HIGGS_LEAK_DETECTOR (DrawableImage)
+};
+
+} // namespace higgs
