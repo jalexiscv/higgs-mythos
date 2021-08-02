@@ -1,0 +1,272 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+std::unique_ptr<Drawable> DrawableText::createCopy() const
+{
+    return std::make_unique<DrawableText> (*this);
+}
+
+//==============================================================================
+void DrawableText::setText (const String& newText)
+{
+    setMember (&DrawableText::text, newText);
+}
+
+void DrawableText::setPreserveWhitespace (bool shouldPreserveWhitespace)
+{
+    setMember (&DrawableText::preserveWhitespace, shouldPreserveWhitespace);
+}
+
+void DrawableText::setColour (Colour newColour)
+{
+    setFill (FillType { newColour });
+}
+
+void DrawableText::setFill (const FillType& newFill)
+{
+    setMember (&DrawableText::fill, newFill);
+}
+
+void DrawableText::setStrokeOptions (const StrokeOptions& newStrokeOptions)
+{
+    if (std::exchange (strokeOptions, newStrokeOptions) != newStrokeOptions)
+        update();
+}
+
+void DrawableText::setFont (const Font& newFont, bool applySizeAndScale)
+{
+    if (font != newFont)
+    {
+        font = newFont;
+
+        if (applySizeAndScale)
+        {
+            fontHeight = font.getHeight();
+            fontHScale = font.getHorizontalScale();
+        }
+
+        update();
+    }
+}
+
+void DrawableText::setJustification (Justification newJustification)
+{
+    setMember (&DrawableText::justification, newJustification);
+}
+
+void DrawableText::setBoundingBox (Parallelogram<float> newBounds)
+{
+    setMember (&DrawableText::bounds, newBounds);
+}
+
+bool DrawableText::hitTest (Point<float> p) const
+{
+    const auto t = getDrawableTransform();
+    Path path;
+    path.addRectangle (bounds.getBoundingBox());
+    path.applyTransform (t);
+    return path.contains (p);
+}
+
+void DrawableText::setFontHeight (float newHeight)
+{
+    if (! approximatelyEqual (fontHeight, newHeight))
+    {
+        fontHeight = newHeight;
+        update();
+    }
+}
+
+void DrawableText::setFontHorizontalScale (float newScale)
+{
+    if (! approximatelyEqual (fontHScale, newScale))
+    {
+        fontHScale = newScale;
+        update();
+    }
+}
+
+void DrawableText::update()
+{
+    auto w = bounds.getWidth();
+    auto h = bounds.getHeight();
+
+    auto height = jlimit (0.01f, jmax (0.01f, h), fontHeight);
+    auto hscale = jlimit (0.01f, jmax (0.01f, w), fontHScale);
+
+    scaledFont = font;
+    scaledFont.setHeight (height);
+    scaledFont.setHorizontalScale (hscale);
+
+    if (strokeOptions.getWidth() > 0.0f)
+    {
+        const auto strokeType = strokeOptions.createStrokeType();
+        const auto path = getOutlineAsPath();
+        static constexpr float extraAccuracy = 4.0f;
+
+        if (strokeOptions.getDashArray().empty())
+        {
+            strokeType.createStrokedPath (strokePath, path, getTransform().inverted(), extraAccuracy);
+        }
+        else
+        {
+            strokeType.createDashedStroke (strokePath,
+                                           path,
+                                           strokeOptions.getDashArray().data(),
+                                           (int) strokeOptions.getDashArray().size(),
+                                           getTransform().inverted(),
+                                           extraAccuracy,
+                                           strokeOptions.getDashOffset());
+        }
+    }
+
+    callListeners();
+}
+
+//==============================================================================
+Rectangle<float> DrawableText::getTextArea() const
+{
+    return { bounds.getWidth(), bounds.getHeight() };
+}
+
+AffineTransform DrawableText::getTextTransform() const
+{
+    const auto transformBounds = bounds - bounds.getTopLeft();
+
+    return AffineTransform::fromTargetPoints (Point<float>(),       transformBounds.topLeft,
+                                              Point<float> (bounds.getWidth(), 0),  transformBounds.topRight,
+                                              Point<float> (0, bounds.getHeight()),  transformBounds.bottomLeft);
+}
+
+void DrawableText::paint (Graphics& g) const
+{
+    const Graphics::ScopedSaveState ss (g);
+
+    g.setFont (scaledFont);
+    g.setFillType (fill);
+
+    if (preserveWhitespace)
+    {
+        g.drawText (text, getBoundingRectangle(), justification, false);
+    }
+    else
+    {
+        g.drawFittedText (text,
+                          getBoundingRectangle().toNearestInt(),
+                          justification,
+                          0x100000);
+    }
+
+    if (strokeOptions.getWidth() > 0.0f)
+    {
+        g.setColour (strokeOptions.getColour());
+        g.fillPath (strokePath);
+    }
+}
+
+AffineTransform DrawableText::getTransform() const
+{
+    return getTextTransform().followedBy (getDrawableTransform());
+}
+
+Rectangle<float> DrawableText::getDrawableBoundsUntransformed() const
+{
+    return bounds.getBoundingBox();
+}
+
+Path DrawableText::getOutlineAsPath() const
+{
+    auto area = getBoundingRectangle();
+
+    GlyphArrangement arr;
+
+    if (preserveWhitespace)
+    {
+        arr.addJustifiedText (scaledFont,
+                              text,
+                              area.getX(),
+                              area.getY() + scaledFont.getAscent(),
+                              area.getWidth(),
+                              justification);
+    }
+    else
+    {
+        arr.addFittedText (scaledFont,
+                           text,
+                           area.getX(),
+                           area.getY(),
+                           area.getWidth(),
+                           area.getHeight(),
+                           justification,
+                           0x100000);
+    }
+
+    Path pathOfAllGlyphs;
+
+    for (auto& glyph : arr)
+    {
+        Path gylphPath;
+        glyph.createPath (gylphPath);
+        pathOfAllGlyphs.addPath (gylphPath);
+    }
+
+    pathOfAllGlyphs.applyTransform (getTransform());
+
+    return pathOfAllGlyphs;
+}
+
+bool DrawableText::replaceColour (Colour originalColour, Colour replacementColour)
+{
+    if (colour != originalColour)
+        return false;
+
+    setColour (replacementColour);
+    return true;
+}
+
+std::optional<String> DrawableText::getContainedText() const
+{
+    return getText();
+}
+
+template <typename Object, typename Member, typename Other>
+void DrawableText::setMember (Member Object::* member, const Other& value)
+{
+    if (std::exchange (this->*member, value) != value)
+        update();
+}
+
+Rectangle<float> DrawableText::getBoundingRectangle() const
+{
+    const auto boundingRectangle = bounds.getBoundingBox();
+
+    if (preserveWhitespace)
+        return boundingRectangle;
+
+    // Supporting legacy behaviour
+    return boundingRectangle.getSmallestIntegerContainer().toFloat();
+}
+
+} // namespace higgs
