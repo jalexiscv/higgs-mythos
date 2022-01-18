@@ -1,0 +1,81 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+/**
+    An image that will be resampled before it is drawn.
+
+    A plain Image only stores plain pixels, but does not store any information
+    about how these pixels correspond to points. This means that if the image's
+    dimensions are interpreted as points, then the image will be blurry when
+    drawn on high resolution displays. If the image's dimensions are instead
+    interpreted as corresponding to exact pixel positions, then the logical
+    size of the image will change depending on the scale factor of the screen
+    used to draw it.
+
+    The ScaledImage class is designed to store an image alongside a scale
+    factor that informs a renderer how to convert between the image's pixels
+    and points.
+
+    @tags{GUI}
+*/
+class HIGGS_API  ScaledImage
+{
+public:
+    /** Creates a ScaledImage with an invalid image and unity scale.
+    */
+    ScaledImage() = default;
+
+    /** Creates a ScaledImage from an Image, where the dimensions of the image
+        in pixels are exactly equal to its dimensions in points.
+    */
+    explicit ScaledImage (const Image& imageIn)
+        : ScaledImage (imageIn, 1.0) {}
+
+    /** Creates a ScaledImage from an Image, using a custom scale factor.
+
+        A scale of 1.0 means that the image's dimensions in pixels is equal to
+        its dimensions in points.
+
+        A scale of 2.0 means that the image contains 2 pixels per point in each
+        direction.
+    */
+    ScaledImage (const Image& imageIn, double scaleIn)
+        : image (imageIn), scaleFactor (scaleIn) {}
+
+    /** Returns the image at its original dimensions. */
+    Image getImage() const { return image; }
+
+    /** Returns the image's scale. */
+    double getScale() const { return scaleFactor; }
+
+    /** Returns the bounds of this image expressed in points. */
+    Rectangle<double> getScaledBounds() const { return image.getBounds().toDouble() / scaleFactor; }
+
+private:
+    Image image;
+    double scaleFactor = 1.0;
+};
+
+} // namespace higgs
