@@ -1,0 +1,238 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+DrawableButton::DrawableButton (const String& name,
+                                const DrawableButton::ButtonStyle buttonStyle,
+                                BoundsToEnclose boundsToEncloseIn)
+    : Button (name), style (buttonStyle), boundsToEnclose (boundsToEncloseIn)
+{
+}
+
+DrawableButton::DrawableButton (const String& name,
+                                const DrawableButton::ButtonStyle buttonStyle)
+    : DrawableButton (name, buttonStyle, BoundsToEnclose::drawableBounds)
+{
+}
+
+DrawableButton::~DrawableButton()
+{
+}
+
+//==============================================================================
+void DrawableButton::setImages (const Drawable* normal,
+                                const Drawable* over,
+                                const Drawable* down,
+                                const Drawable* disabled,
+                                const Drawable* normalOn,
+                                const Drawable* overOn,
+                                const Drawable* downOn,
+                                const Drawable* disabledOn)
+{
+    jassert (normal != nullptr); // you really need to give it at least a normal image
+
+    normalImage     = OwningDrawableComponent::createFromCopy (normal, boundsToEnclose);
+    overImage       = OwningDrawableComponent::createFromCopy (over, boundsToEnclose);
+    downImage       = OwningDrawableComponent::createFromCopy (down, boundsToEnclose);
+    disabledImage   = OwningDrawableComponent::createFromCopy (disabled, boundsToEnclose);
+    normalImageOn   = OwningDrawableComponent::createFromCopy (normalOn, boundsToEnclose);
+    overImageOn     = OwningDrawableComponent::createFromCopy (overOn, boundsToEnclose);
+    downImageOn     = OwningDrawableComponent::createFromCopy (downOn, boundsToEnclose);
+    disabledImageOn = OwningDrawableComponent::createFromCopy (disabledOn, boundsToEnclose);
+
+    currentImage = nullptr;
+
+    buttonStateChanged();
+}
+
+//==============================================================================
+void DrawableButton::setButtonStyle (const DrawableButton::ButtonStyle newStyle)
+{
+    if (style != newStyle)
+    {
+        style = newStyle;
+        buttonStateChanged();
+    }
+}
+
+void DrawableButton::setEdgeIndent (const int numPixelsIndent)
+{
+    edgeIndent = numPixelsIndent;
+    repaint();
+    resized();
+}
+
+Rectangle<float> DrawableButton::getImageBounds() const
+{
+    auto r = getLocalBounds();
+
+    if (style != ImageStretched)
+    {
+        auto indentX = jmin (edgeIndent, proportionOfWidth  (0.3f));
+        auto indentY = jmin (edgeIndent, proportionOfHeight (0.3f));
+
+        if (shouldDrawButtonBackground())
+        {
+            indentX = jmax (getWidth()  / 4, indentX);
+            indentY = jmax (getHeight() / 4, indentY);
+        }
+        else if (style == ImageAboveTextLabel)
+        {
+            r = r.withTrimmedBottom (jmin (16, proportionOfHeight (0.25f)));
+        }
+
+        r = r.reduced (indentX, indentY);
+    }
+
+    return r.toFloat();
+}
+
+void DrawableButton::resized()
+{
+    Button::resized();
+
+    if (currentImage != nullptr)
+    {
+        if (style != ImageRaw)
+        {
+            int transformFlags = 0;
+
+            if (style == ImageStretched)
+            {
+                transformFlags |= RectanglePlacement::stretchToFit;
+            }
+            else
+            {
+                transformFlags |= RectanglePlacement::centred;
+
+                if (style == ImageOnButtonBackgroundOriginalSize)
+                    transformFlags |= RectanglePlacement::doNotResize;
+            }
+
+            currentImage->setTransformToFit (getImageBounds(), transformFlags);
+        }
+    }
+}
+
+void DrawableButton::buttonStateChanged()
+{
+    repaint();
+
+    DrawableComponent* imageToDraw = nullptr;
+    float opacity = 1.0f;
+
+    if (isEnabled())
+    {
+        imageToDraw = getCurrentImage();
+    }
+    else
+    {
+        imageToDraw = getToggleState() ? disabledImageOn.get()
+                                       : disabledImage.get();
+
+        if (imageToDraw == nullptr)
+        {
+            opacity = 0.4f;
+            imageToDraw = getNormalImage();
+        }
+    }
+
+    if (imageToDraw != currentImage)
+    {
+        removeChildComponent (currentImage);
+        currentImage = imageToDraw;
+
+        if (currentImage != nullptr)
+        {
+            currentImage->setInterceptsMouseClicks (false, false);
+            addAndMakeVisible (currentImage);
+            resized();
+        }
+    }
+
+    if (currentImage != nullptr)
+        currentImage->setAlpha (opacity);
+}
+
+void DrawableButton::enablementChanged()
+{
+    Button::enablementChanged();
+    buttonStateChanged();
+}
+
+void DrawableButton::colourChanged()
+{
+    repaint();
+}
+
+void DrawableButton::paintButton (Graphics& g,
+                                  const bool shouldDrawButtonAsHighlighted,
+                                  const bool shouldDrawButtonAsDown)
+{
+    auto& lf = getLookAndFeel();
+
+    if (shouldDrawButtonBackground())
+        lf.drawButtonBackground (g, *this,
+                                 findColour (getToggleState() ? TextButton::buttonOnColourId
+                                                              : TextButton::buttonColourId),
+                                 shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
+    else
+        lf.drawDrawableButton (g, *this, shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
+}
+
+//==============================================================================
+DrawableComponent* DrawableButton::getCurrentImage() const noexcept
+{
+    if (isDown())  return getDownImage();
+    if (isOver())  return getOverImage();
+
+    return getNormalImage();
+}
+
+DrawableComponent* DrawableButton::getNormalImage() const noexcept
+{
+    return (getToggleState() && normalImageOn != nullptr) ? normalImageOn.get()
+                                                          : normalImage.get();
+}
+
+DrawableComponent* DrawableButton::getOverImage() const noexcept
+{
+    if (getToggleState())
+    {
+        if (overImageOn   != nullptr)   return overImageOn.get();
+        if (normalImageOn != nullptr)   return normalImageOn.get();
+    }
+
+    return overImage != nullptr ? overImage.get() : normalImage.get();
+}
+
+DrawableComponent* DrawableButton::getDownImage() const noexcept
+{
+    if (auto* d = getToggleState() ? downImageOn.get() : downImage.get())
+        return d;
+
+    return getOverImage();
+}
+
+} // namespace higgs
