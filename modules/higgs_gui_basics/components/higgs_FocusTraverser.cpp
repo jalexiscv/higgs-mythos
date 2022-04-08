@@ -1,0 +1,290 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+//==============================================================================
+FocusTraverser::FocusTraverser (SkipDisabledComponents skipDisabledComponentsIn)
+    : skipDisabledComponents (skipDisabledComponentsIn)
+{
+}
+
+Component* FocusTraverser::getNextComponent (Component* current)
+{
+    jassert (current != nullptr);
+
+    return detail::FocusHelpers::navigateFocus (current,
+                                                current->findFocusContainer(),
+                                                detail::FocusHelpers::NavigationDirection::forwards,
+                                                &Component::isFocusContainer,
+                                                skipDisabledComponents);
+}
+
+Component* FocusTraverser::getPreviousComponent (Component* current)
+{
+    jassert (current != nullptr);
+
+    return detail::FocusHelpers::navigateFocus (current,
+                                                current->findFocusContainer(),
+                                                detail::FocusHelpers::NavigationDirection::backwards,
+                                                &Component::isFocusContainer,
+                                                skipDisabledComponents);
+}
+
+Component* FocusTraverser::getDefaultComponent (Component* parentComponent)
+{
+    if (parentComponent != nullptr)
+    {
+        std::vector<Component*> components;
+
+        detail::FocusHelpers::findAllComponents (parentComponent,
+                                                 components,
+                                                 &Component::isFocusContainer,
+                                                 skipDisabledComponents);
+
+        if (! components.empty())
+            return components.front();
+    }
+
+    return nullptr;
+}
+
+std::vector<Component*> FocusTraverser::getAllComponents (Component* parentComponent)
+{
+    std::vector<Component*> components;
+    detail::FocusHelpers::findAllComponents (parentComponent,
+                                             components,
+                                             &Component::isFocusContainer,
+                                             skipDisabledComponents);
+
+    return components;
+}
+
+//==============================================================================
+//==============================================================================
+#if HIGGS_UNIT_TESTS
+
+struct FocusTraverserTests final : public UnitTest
+{
+    FocusTraverserTests()
+        : UnitTest ("FocusTraverser", UnitTestCategories::gui)
+    {}
+
+    void runTest() override
+    {
+        ScopedHiggsInitialiser_GUI libraryInitialiser;
+        const MessageManagerLock mml;
+
+        testCase ("Basic traversal", [&]
+        {
+            TestComponent parent;
+
+            expect (traverser.getDefaultComponent (&parent) == &parent.children.front());
+
+            for (auto iter = parent.children.begin(); iter != parent.children.end(); ++iter)
+                expect (traverser.getNextComponent (&(*iter)) == (iter == std::prev (parent.children.cend()) ? nullptr
+                                                                                                             : &(*std::next (iter))));
+
+            for (auto iter = parent.children.rbegin(); iter != parent.children.rend(); ++iter)
+                expect (traverser.getPreviousComponent (&(*iter)) == (iter == std::prev (parent.children.rend()) ? nullptr
+                                                                                                                 : &(*std::next (iter))));
+            auto allComponents = traverser.getAllComponents (&parent);
+
+            expect (std::equal (allComponents.cbegin(), allComponents.cend(), parent.children.cbegin(),
+                                [] (const Component* c1, const Component& c2) { return c1 == &c2; }));
+        });
+
+        testCase ("Disabled components are not ignored by default", [&]
+        {
+            TestComponent parent;
+            parent.children[2].setEnabled (false);
+            parent.children[5].setEnabled (false);
+            expect (traverser.getAllComponents (&parent).size() == parent.children.size());
+        });
+
+        testCase ("Disabled components can be ignored", [&]
+        {
+            FocusTraverser ignoringTraverser { FocusTraverser::SkipDisabledComponents::yes };
+            checkIgnored ([] (Component& c) { c.setEnabled (false); }, ignoringTraverser);
+        });
+
+        testCase ("Invisible components are ignored", [&]
+        {
+            checkIgnored ([] (Component& c) { c.setVisible (false); }, traverser);
+        });
+
+        testCase ("Explicit focus order comes before unspecified", [&]
+        {
+            TestComponent parent;
+
+            auto& explicitFocusComponent = parent.children[2];
+
+            explicitFocusComponent.setExplicitFocusOrder (1);
+            expect (traverser.getDefaultComponent (&parent) == &explicitFocusComponent);
+
+            expect (traverser.getAllComponents (&parent).front() == &explicitFocusComponent);
+        });
+
+        testCase ("Explicit focus order comparison", [&]
+        {
+            checkComponentProperties ([this] (Component& child) { child.setExplicitFocusOrder (getRandom().nextInt ({ 1, 100 })); },
+                                      [] (const Component& c1, const Component& c2) { return c1.getExplicitFocusOrder()
+                                                                                               <= c2.getExplicitFocusOrder(); });
+        });
+
+        testCase ("Left to right", [&]
+        {
+            checkComponentProperties ([this] (Component& child) { child.setTopLeftPosition (getRandom().nextInt ({ 0, 100 }), 0); },
+                                      [] (const Component& c1, const Component& c2) { return c1.getX() <= c2.getX(); });
+        });
+
+        testCase ("Top to bottom", [&]
+        {
+            checkComponentProperties ([this] (Component& child) { child.setTopLeftPosition (0, getRandom().nextInt ({ 0, 100 })); },
+                                      [] (const Component& c1, const Component& c2) { return c1.getY() <= c2.getY(); });
+        });
+
+        testCase ("Focus containers have their own focus", [&]
+        {
+            Component root;
+
+            TestComponent container;
+            container.setFocusContainerType (Component::FocusContainerType::focusContainer);
+
+            root.addAndMakeVisible (container);
+
+            expect (traverser.getDefaultComponent (&root) == &container);
+            expect (traverser.getNextComponent (&container) == nullptr);
+            expect (traverser.getPreviousComponent (&container) == nullptr);
+
+            expect (traverser.getDefaultComponent (&container) == &container.children.front());
+
+            for (auto iter = container.children.begin(); iter != container.children.end(); ++iter)
+                expect (traverser.getNextComponent (&(*iter)) == (iter == std::prev (container.children.cend()) ? nullptr
+                                                                                                                : &(*std::next (iter))));
+
+            for (auto iter = container.children.rbegin(); iter != container.children.rend(); ++iter)
+                expect (traverser.getPreviousComponent (&(*iter)) == (iter == std::prev (container.children.rend()) ? nullptr
+                                                                                                                    : &(*std::next (iter))));
+
+            expect (traverser.getAllComponents (&root).size() == 1);
+
+            auto allContainerComponents = traverser.getAllComponents (&container);
+
+            expect (std::equal (allContainerComponents.cbegin(), allContainerComponents.cend(), container.children.cbegin(),
+                                [] (const Component* c1, const Component& c2) { return c1 == &c2; }));
+        });
+
+        testCase ("Non-focus containers pass-through focus", [&]
+        {
+            Component root;
+
+            TestComponent container;
+            container.setFocusContainerType (Component::FocusContainerType::none);
+
+            root.addAndMakeVisible (container);
+
+            expect (traverser.getDefaultComponent (&root) == &container);
+            expect (traverser.getNextComponent (&container) == &container.children.front());
+            expect (traverser.getPreviousComponent (&container) == nullptr);
+
+            expect (traverser.getDefaultComponent (&container) == &container.children.front());
+
+            for (auto iter = container.children.begin(); iter != container.children.end(); ++iter)
+                expect (traverser.getNextComponent (&(*iter)) == (iter == std::prev (container.children.cend()) ? nullptr
+                                                                                                                : &(*std::next (iter))));
+
+            for (auto iter = container.children.rbegin(); iter != container.children.rend(); ++iter)
+                expect (traverser.getPreviousComponent (&(*iter)) == (iter == std::prev (container.children.rend()) ? &container
+                                                                                                                    : &(*std::next (iter))));
+
+            expect (traverser.getAllComponents (&root).size() == container.children.size() + 1);
+        });
+    }
+
+private:
+    struct TestComponent final : public Component
+    {
+        TestComponent()
+        {
+            for (auto& child : children)
+                addAndMakeVisible (child);
+        }
+
+        std::array<Component, 10> children;
+    };
+
+    void checkComponentProperties (std::function<void (Component&)>&& childFn,
+                                   std::function<bool (const Component&, const Component&)>&& testProperty)
+    {
+        TestComponent parent;
+
+        for (auto& child : parent.children)
+            childFn (child);
+
+        auto* comp = traverser.getDefaultComponent (&parent);
+
+        for (const auto& child : parent.children)
+            if (&child != comp)
+                expect (testProperty (*comp, child));
+
+        for (;;)
+        {
+            auto* next = traverser.getNextComponent (comp);
+
+            if (next == nullptr)
+                break;
+
+            expect (testProperty (*comp, *next));
+            comp = next;
+        }
+    }
+
+    void checkIgnored (const std::function<void (Component&)>& makeIgnored, FocusTraverser& traverserToUse)
+    {
+        TestComponent parent;
+
+        auto iter = parent.children.begin();
+
+        makeIgnored (*iter);
+        expect (traverserToUse.getDefaultComponent (&parent) == std::addressof (*std::next (iter)));
+
+        iter += 5;
+        makeIgnored (*iter);
+        expect (traverserToUse.getNextComponent (std::addressof (*std::prev (iter))) == std::addressof (*std::next (iter)));
+        expect (traverserToUse.getPreviousComponent (std::addressof (*std::next (iter))) == std::addressof (*std::prev (iter)));
+
+        auto allComponents = traverserToUse.getAllComponents (&parent);
+
+        expect (std::find (allComponents.cbegin(), allComponents.cend(), &parent.children.front()) == allComponents.cend());
+        expect (std::find (allComponents.cbegin(), allComponents.cend(), std::addressof (*iter)) == allComponents.cend());
+    }
+
+    FocusTraverser traverser;
+};
+
+static FocusTraverserTests focusTraverserTests;
+
+#endif
+
+} // namespace higgs
