@@ -1,0 +1,274 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+//==============================================================================
+namespace KeyboardFocusTraverserHelpers
+{
+    static bool isKeyboardFocusable (const Component* comp, const Component* container)
+    {
+        return comp->getWantsKeyboardFocus() && container->isParentOf (comp);
+    }
+
+    static Component* traverse (const Component* current, const Component* container,
+                                detail::FocusHelpers::NavigationDirection direction)
+    {
+        if (auto* comp = detail::FocusHelpers::navigateFocus (current, container, direction,
+                                                              &Component::isKeyboardFocusContainer,
+                                                              FocusTraverser::SkipDisabledComponents::yes))
+        {
+            if (isKeyboardFocusable (comp, container))
+                return comp;
+
+            return traverse (comp, container, direction);
+        }
+
+        return nullptr;
+    }
+}
+
+Component* KeyboardFocusTraverser::getNextComponent (Component* current)
+{
+    return KeyboardFocusTraverserHelpers::traverse (current, current->findKeyboardFocusContainer(),
+                                                    detail::FocusHelpers::NavigationDirection::forwards);
+}
+
+Component* KeyboardFocusTraverser::getPreviousComponent (Component* current)
+{
+    return KeyboardFocusTraverserHelpers::traverse (current, current->findKeyboardFocusContainer(),
+                                                    detail::FocusHelpers::NavigationDirection::backwards);
+}
+
+Component* KeyboardFocusTraverser::getDefaultComponent (Component* parentComponent)
+{
+    for (auto* comp : getAllComponents (parentComponent))
+        if (KeyboardFocusTraverserHelpers::isKeyboardFocusable (comp, parentComponent))
+            return comp;
+
+    return nullptr;
+}
+
+std::vector<Component*> KeyboardFocusTraverser::getAllComponents (Component* parentComponent)
+{
+    std::vector<Component*> components;
+    detail::FocusHelpers::findAllComponents (parentComponent,
+                                             components,
+                                             &Component::isKeyboardFocusContainer,
+                                             FocusTraverser::SkipDisabledComponents::yes);
+
+    auto removePredicate = [parentComponent] (const Component* comp)
+    {
+        return ! KeyboardFocusTraverserHelpers::isKeyboardFocusable (comp, parentComponent);
+    };
+
+    components.erase (std::remove_if (std::begin (components), std::end (components), std::move (removePredicate)),
+                      std::end (components));
+
+    return components;
+}
+
+
+//==============================================================================
+//==============================================================================
+#if HIGGS_UNIT_TESTS
+
+struct KeyboardFocusTraverserTests final : public UnitTest
+{
+    KeyboardFocusTraverserTests()
+        : UnitTest ("KeyboardFocusTraverser", UnitTestCategories::gui)
+    {}
+
+    void runTest() override
+    {
+        ScopedHiggsInitialiser_GUI libraryInitialiser;
+        const auto mml = std::make_unique<MessageManagerLock>();
+
+        beginTest ("No child wants keyboard focus");
+        {
+            const auto parent = std::make_unique<TestComponent>();
+
+            expect (traverser.getDefaultComponent (parent.get()) == nullptr);
+            expect (traverser.getAllComponents (parent.get()).empty());
+        }
+
+        beginTest ("Single child wants keyboard focus");
+        {
+            const auto parent = std::make_unique<TestComponent>();
+
+            parent->children[5].setWantsKeyboardFocus (true);
+
+            auto* defaultComponent = traverser.getDefaultComponent (parent.get());
+
+            expect (defaultComponent == &parent->children[5]);
+            expect (defaultComponent->getWantsKeyboardFocus());
+
+            expect (traverser.getNextComponent (defaultComponent) == nullptr);
+            expect (traverser.getPreviousComponent (defaultComponent) == nullptr);
+            expect (traverser.getAllComponents (parent.get()).size() == 1);
+        }
+
+        beginTest ("Multiple children want keyboard focus");
+        {
+            const auto parent = std::make_unique<TestComponent>();
+
+            Component* focusChildren[]
+            {
+                &parent->children[1],
+                &parent->children[9],
+                &parent->children[3],
+                &parent->children[5],
+                &parent->children[8],
+                &parent->children[0]
+            };
+
+            for (auto* focusChild : focusChildren)
+                focusChild->setWantsKeyboardFocus (true);
+
+            auto allComponents = traverser.getAllComponents (parent.get());
+
+            for (auto* focusChild : focusChildren)
+                expect (std::find (allComponents.cbegin(), allComponents.cend(), focusChild) != allComponents.cend());
+
+            auto* componentToTest = traverser.getDefaultComponent (parent.get());
+
+            for (;;)
+            {
+                expect (componentToTest->getWantsKeyboardFocus());
+                expect (std::find (std::begin (focusChildren), std::end (focusChildren), componentToTest) != std::end (focusChildren));
+
+                componentToTest = traverser.getNextComponent (componentToTest);
+
+                if (componentToTest == nullptr)
+                    break;
+            }
+
+            int focusOrder = 1;
+            for (auto* focusChild : focusChildren)
+                focusChild->setExplicitFocusOrder (focusOrder++);
+
+            componentToTest = traverser.getDefaultComponent (parent.get());
+
+            for (auto* focusChild : focusChildren)
+            {
+                expect (componentToTest == focusChild);
+                expect (componentToTest->getWantsKeyboardFocus());
+
+                componentToTest = traverser.getNextComponent (componentToTest);
+            }
+        }
+
+        beginTest ("Single nested child wants keyboard focus");
+        {
+            const auto parent = std::make_unique<TestComponent>();
+            const auto grandparent = std::make_unique<Component>();
+
+            grandparent->addAndMakeVisible (parent.get());
+
+            auto& focusChild = parent->children[5];
+
+            focusChild.setWantsKeyboardFocus (true);
+
+            expect (traverser.getDefaultComponent (grandparent.get()) == &focusChild);
+            expect (traverser.getDefaultComponent (parent.get()) == &focusChild);
+            expect (traverser.getNextComponent (&focusChild) == nullptr);
+            expect (traverser.getPreviousComponent (&focusChild) == nullptr);
+            expect (traverser.getAllComponents (parent.get()).size() == 1);
+        }
+
+        beginTest ("Multiple nested children want keyboard focus");
+        {
+            const auto parent = std::make_unique<TestComponent>();
+            const auto grandparent = std::make_unique<Component>();
+
+            grandparent->addAndMakeVisible (parent.get());
+
+            Component* focusChildren[]
+            {
+                &parent->children[1],
+                &parent->children[4],
+                &parent->children[5]
+            };
+
+            for (auto* focusChild : focusChildren)
+                focusChild->setWantsKeyboardFocus (true);
+
+            auto allComponents = traverser.getAllComponents (parent.get());
+
+            expect (std::equal (allComponents.cbegin(), allComponents.cend(), focusChildren,
+                                [] (const Component* c1, const Component* c2) { return c1 == c2; }));
+
+            const auto front = *focusChildren;
+            const auto back  = *std::prev (std::end (focusChildren));
+
+            expect (traverser.getDefaultComponent (grandparent.get()) == front);
+            expect (traverser.getDefaultComponent (parent.get()) == front);
+            expect (traverser.getNextComponent (front) == *std::next (std::begin (focusChildren)));
+            expect (traverser.getPreviousComponent (back) == *std::prev (std::end (focusChildren), 2));
+
+            std::array<std::unique_ptr<Component>, 3> otherParents;
+
+            for (auto& p : otherParents)
+            {
+                p = std::make_unique<Component>();
+                grandparent->addAndMakeVisible (p.get());
+                p->setWantsKeyboardFocus (true);
+            }
+
+            expect (traverser.getDefaultComponent (grandparent.get()) == front);
+            expect (traverser.getDefaultComponent (parent.get()) == front);
+            expect (traverser.getNextComponent (back) == otherParents.front().get());
+            expect (traverser.getNextComponent (otherParents.back().get()) == nullptr);
+            expect (traverser.getAllComponents (grandparent.get()).size() == numElementsInArray (focusChildren) + otherParents.size());
+            expect (traverser.getAllComponents (parent.get()).size() == (size_t) numElementsInArray (focusChildren));
+
+            for (auto* focusChild : focusChildren)
+                focusChild->setWantsKeyboardFocus (false);
+
+            expect (traverser.getDefaultComponent (grandparent.get()) == otherParents.front().get());
+            expect (traverser.getDefaultComponent (parent.get()) == nullptr);
+            expect (traverser.getAllComponents (grandparent.get()).size() == otherParents.size());
+            expect (traverser.getAllComponents (parent.get()).empty());
+        }
+    }
+
+private:
+    struct TestComponent final : public Component
+    {
+        TestComponent()
+        {
+            for (auto& child : children)
+                addAndMakeVisible (child);
+        }
+
+        std::array<Component, 10> children;
+    };
+
+    KeyboardFocusTraverser traverser;
+};
+
+static KeyboardFocusTraverserTests keyboardFocusTraverserTests;
+
+#endif
+
+} // namespace higgs
