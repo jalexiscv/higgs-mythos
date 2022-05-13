@@ -1,0 +1,127 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+ResizableEdgeComponent::ResizableEdgeComponent (Component* componentToResize,
+                                                ComponentBoundsConstrainer* boundsConstrainer,
+                                                Edge e)
+   : component (componentToResize),
+     constrainer (boundsConstrainer),
+     edge (e)
+{
+    setRepaintsOnMouseActivity (true);
+    setMouseCursor (isVertical() ? MouseCursor::LeftRightResizeCursor
+                                 : MouseCursor::UpDownResizeCursor);
+}
+
+ResizableEdgeComponent::~ResizableEdgeComponent() = default;
+
+//==============================================================================
+bool ResizableEdgeComponent::isVertical() const noexcept
+{
+    return edge == leftEdge || edge == rightEdge;
+}
+
+void ResizableEdgeComponent::paint (Graphics& g)
+{
+    getLookAndFeel().drawStretchableLayoutResizerBar (g, getWidth(), getHeight(), isVertical(),
+                                                      isMouseOver(), isMouseButtonDown());
+}
+
+void ResizableEdgeComponent::mouseDown (const MouseEvent& e)
+{
+    if (component == nullptr)
+    {
+        jassertfalse; // You've deleted the component that this resizer was supposed to be using!
+        return;
+    }
+
+    originalBounds = component->getBounds();
+
+    using Zone = ResizableBorderComponent::Zone;
+
+    const Zone zone { [&]
+    {
+        switch (edge)
+        {
+            case Edge::leftEdge:    return Zone::left;
+            case Edge::rightEdge:   return Zone::right;
+            case Edge::topEdge:     return Zone::top;
+            case Edge::bottomEdge:  return Zone::bottom;
+        }
+
+        return Zone::centre;
+    }() };
+
+    if (auto* peer = component->getPeer())
+        if (&peer->getComponent() == component)
+            peer->startHostManagedResize (peer->globalToLocal (localPointToGlobal (e.getPosition())), zone);
+
+    if (constrainer != nullptr)
+        constrainer->resizeStart();
+}
+
+void ResizableEdgeComponent::mouseDrag (const MouseEvent& e)
+{
+    if (component == nullptr)
+    {
+        jassertfalse; // You've deleted the component that this resizer was supposed to be using!
+        return;
+    }
+
+    auto newBounds = originalBounds;
+
+    switch (edge)
+    {
+        case leftEdge:      newBounds.setLeft (jmin (newBounds.getRight(), newBounds.getX() + e.getDistanceFromDragStartX())); break;
+        case rightEdge:     newBounds.setWidth (jmax (0, newBounds.getWidth() + e.getDistanceFromDragStartX())); break;
+        case topEdge:       newBounds.setTop (jmin (newBounds.getBottom(), newBounds.getY() + e.getDistanceFromDragStartY())); break;
+        case bottomEdge:    newBounds.setHeight (jmax (0, newBounds.getHeight() + e.getDistanceFromDragStartY())); break;
+        default:            jassertfalse; break;
+    }
+
+    if (constrainer != nullptr)
+    {
+        constrainer->setBoundsForComponent (component, newBounds,
+                                            edge == topEdge,
+                                            edge == leftEdge,
+                                            edge == bottomEdge,
+                                            edge == rightEdge);
+    }
+    else
+    {
+        if (auto* p = component->getPositioner())
+            p->applyNewBounds (newBounds);
+        else
+            component->setBounds (newBounds);
+    }
+}
+
+void ResizableEdgeComponent::mouseUp (const MouseEvent&)
+{
+    if (constrainer != nullptr)
+        constrainer->resizeEnd();
+}
+
+} // namespace higgs
