@@ -1,0 +1,95 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+//==============================================================================
+/**
+    An object to take care of the logic for dragging components around with the mouse.
+
+    Very easy to use - in your mouseDown() callback, call startDraggingComponent(),
+    then in your mouseDrag() callback, call dragComponent().
+
+    When starting a drag, you can give it a ComponentBoundsConstrainer to use
+    to limit the component's position and keep it on-screen.
+
+    e.g. @code
+    class MyDraggableComp
+    {
+        ComponentDragger myDragger;
+
+        void mouseDown (const MouseEvent& e)
+        {
+            myDragger.startDraggingComponent (this, e);
+        }
+
+        void mouseDrag (const MouseEvent& e)
+        {
+            myDragger.dragComponent (this, e, nullptr);
+        }
+    };
+    @endcode
+
+    @tags{GUI}
+*/
+class HIGGS_API  ComponentDragger
+{
+public:
+    //==============================================================================
+    /** Creates a ComponentDragger. */
+    ComponentDragger() = default;
+
+    //==============================================================================
+    /** Call this from your component's mouseDown() method, to prepare for dragging.
+
+        @param componentToDrag      the component that you want to drag
+        @param e                    the mouse event that is triggering the drag
+        @see dragComponent
+    */
+    void startDraggingComponent (Component* componentToDrag,
+                                 const MouseEvent& e);
+
+    /** Call this from your mouseDrag() callback to move the component.
+
+        This will move the component, using the given constrainer object to check
+        the new position.
+
+        @param componentToDrag      the component that you want to drag
+        @param e                    the current mouse-drag event
+        @param constrainer          an optional constrainer object that should be used
+                                    to apply limits to the component's position. Pass
+                                    null if you don't want to constrain the movement.
+        @see startDraggingComponent
+    */
+    void dragComponent (Component* componentToDrag,
+                        const MouseEvent& e,
+                        ComponentBoundsConstrainer* constrainer);
+
+private:
+    //==============================================================================
+    Point<int> mouseDownWithinTarget;
+
+    HIGGS_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ComponentDragger)
+};
+
+} // namespace higgs
