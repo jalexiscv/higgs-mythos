@@ -1,0 +1,338 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+#define HIGGS_NATIVE_ACCESSIBILITY_INCLUDED 1
+
+HIGGS_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wlanguage-extension-token")
+
+//==============================================================================
+struct WindowsAccessibility
+{
+    WindowsAccessibility() = delete;
+
+    static long getUiaRootObjectId()
+    {
+        return static_cast<long> (UiaRootObjectId);
+    }
+
+    static bool handleWmGetObject (AccessibilityHandler* handler, WPARAM wParam, LPARAM lParam, LRESULT* res)
+    {
+        if (isStartingUpOrShuttingDown() || (handler == nullptr || ! isHandlerValid (*handler)))
+            return false;
+
+        if (auto* uiaWrapper = WindowsUIAWrapper::getInstance())
+        {
+            ComSmartPtr<IRawElementProviderSimple> provider;
+            handler->getNativeImplementation()->QueryInterface (IID_PPV_ARGS (provider.resetAndGetPointerAddress()));
+
+            if (! uiaWrapper->isProviderDisconnecting (provider))
+                *res = uiaWrapper->returnRawElementProvider ((HWND) handler->getComponent().getWindowHandle(), wParam, lParam, provider);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    static void revokeUIAMapEntriesForWindow (HWND hwnd)
+    {
+        if (auto* uiaWrapper = WindowsUIAWrapper::getInstanceWithoutCreating())
+            uiaWrapper->returnRawElementProvider (hwnd, 0, 0, nullptr);
+    }
+
+    static bool isStartingUpOrShuttingDown()
+    {
+        if (auto* app = HIGGSApplicationBase::getInstance())
+            if (app->isInitialising())
+                return true;
+
+        if (auto* mm = MessageManager::getInstanceWithoutCreating())
+            if (mm->hasStopMessageBeenSent())
+                return true;
+
+        return false;
+    }
+
+    static bool isHandlerValid (const AccessibilityHandler& handler)
+    {
+        if (auto* provider = handler.getNativeImplementation())
+            return provider->isElementValid();
+
+        return false;
+    }
+
+    static bool areAnyAccessibilityClientsActive()
+    {
+        const auto areClientsListening = []
+        {
+            if (auto* uiaWrapper = WindowsUIAWrapper::getInstanceWithoutCreating())
+                return uiaWrapper->clientsAreListening() != 0;
+
+            return false;
+        };
+
+        const auto isScreenReaderRunning = []
+        {
+            BOOL isRunning = FALSE;
+            SystemParametersInfo (SPI_GETSCREENREADER, 0, (PVOID) &isRunning, 0);
+
+            return isRunning != 0;
+        };
+
+        return areClientsListening() || isScreenReaderRunning();
+    }
+};
+
+//==============================================================================
+class AccessibilityHandler::AccessibilityNativeImpl
+{
+public:
+    explicit AccessibilityNativeImpl (AccessibilityHandler& owner)
+        : accessibilityElement (new AccessibilityNativeHandle (owner), IncrementRef::no)
+    {
+        ++providerCount;
+    }
+
+    ~AccessibilityNativeImpl()
+    {
+        ComSmartPtr<IRawElementProviderSimple> provider;
+        accessibilityElement->QueryInterface (IID_PPV_ARGS (provider.resetAndGetPointerAddress()));
+
+        accessibilityElement->invalidateElement();
+        --providerCount;
+
+        if (auto* uiaWrapper = WindowsUIAWrapper::getInstanceWithoutCreating())
+        {
+            uiaWrapper->disconnectProvider (provider);
+
+            if (providerCount == 0)
+                uiaWrapper->disconnectAllProviders();
+        }
+    }
+
+    //==============================================================================
+    ComSmartPtr<AccessibilityNativeHandle> accessibilityElement;
+    static int providerCount;
+
+    //==============================================================================
+    HIGGS_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AccessibilityNativeImpl)
+};
+
+int AccessibilityHandler::AccessibilityNativeImpl::providerCount = 0;
+
+//==============================================================================
+AccessibilityNativeHandle* AccessibilityHandler::getNativeImplementation() const
+{
+    return nativeImpl->accessibilityElement;
+}
+
+template <typename Callback>
+void getProviderWithCheckedWrapper (const AccessibilityHandler& handler, Callback&& callback)
+{
+    if (! WindowsAccessibility::areAnyAccessibilityClientsActive()
+        || WindowsAccessibility::isStartingUpOrShuttingDown()
+        || ! WindowsAccessibility::isHandlerValid (handler))
+        return;
+
+    if (auto* uiaWrapper = WindowsUIAWrapper::getInstanceWithoutCreating())
+    {
+        ComSmartPtr<IRawElementProviderSimple> provider;
+        handler.getNativeImplementation()->QueryInterface (IID_PPV_ARGS (provider.resetAndGetPointerAddress()));
+
+        callback (uiaWrapper, provider);
+    }
+}
+
+void sendAccessibilityAutomationEvent (const AccessibilityHandler& handler, EVENTID event)
+{
+    jassert (event != EVENTID{});
+
+    getProviderWithCheckedWrapper (handler, [event] (WindowsUIAWrapper* uiaWrapper, ComSmartPtr<IRawElementProviderSimple>& provider)
+    {
+        uiaWrapper->raiseAutomationEvent (provider, event);
+    });
+}
+
+void sendAccessibilityPropertyChangedEvent (const AccessibilityHandler& handler, PROPERTYID property, VARIANT newValue)
+{
+    jassert (property != PROPERTYID{});
+
+    getProviderWithCheckedWrapper (handler, [property, newValue] (WindowsUIAWrapper* uiaWrapper, ComSmartPtr<IRawElementProviderSimple>& provider)
+    {
+        VARIANT oldValue;
+        VariantHelpers::clear (&oldValue);
+
+        uiaWrapper->raiseAutomationPropertyChangedEvent (provider, property, oldValue, newValue);
+    });
+}
+
+void detail::AccessibilityHelpers::notifyAccessibilityEvent (const AccessibilityHandler& handler, Event eventType)
+{
+    if (eventType == Event::elementCreated
+        || eventType == Event::elementDestroyed)
+    {
+        if (auto* parent = handler.getParent())
+            sendAccessibilityAutomationEvent (*parent, UIA_LayoutInvalidatedEventId);
+
+        return;
+    }
+
+    if (eventType == Event::windowOpened
+        || eventType == Event::windowClosed)
+    {
+        if (auto* peer = handler.getComponent().getPeer())
+            if ((peer->getStyleFlags() & ComponentPeer::windowHasTitleBar) == 0)
+                return;
+    }
+
+    auto event = [eventType]() -> EVENTID
+    {
+        switch (eventType)
+        {
+            case Event::focusChanged:           return UIA_AutomationFocusChangedEventId;
+            case Event::windowOpened:           return UIA_Window_WindowOpenedEventId;
+            case Event::windowClosed:           return UIA_Window_WindowClosedEventId;
+            case Event::elementCreated:
+            case Event::elementDestroyed:
+            case Event::elementMovedOrResized:  break;
+        }
+
+        return {};
+    }();
+
+    if (event != EVENTID{})
+        sendAccessibilityAutomationEvent (handler, event);
+}
+
+void AccessibilityHandler::notifyAccessibilityEvent (AccessibilityEvent eventType) const
+{
+    if (eventType == AccessibilityEvent::titleChanged)
+    {
+        VARIANT newValue;
+        VariantHelpers::setString (getTitle(), &newValue);
+
+        sendAccessibilityPropertyChangedEvent (*this, UIA_NamePropertyId, newValue);
+        return;
+    }
+
+    if (eventType == AccessibilityEvent::valueChanged)
+    {
+        if (getCurrentState().isCheckable())
+        {
+            VARIANT newValue;
+            VariantHelpers::setInt (getCurrentState().isChecked() ? ToggleState_On
+                                                                  : ToggleState_Off,
+                                    &newValue);
+
+            sendAccessibilityPropertyChangedEvent (*this, UIA_ToggleToggleStatePropertyId, newValue);
+        }
+
+        if (auto* valueInterface = getValueInterface())
+        {
+            const auto propertyType = getRole() == AccessibilityRole::slider ? UIA_RangeValueValuePropertyId
+                                                                             : UIA_ValueValuePropertyId;
+
+            const auto value = getRole() == AccessibilityRole::slider
+                               ? VariantHelpers::getWithValue (valueInterface->getCurrentValue())
+                               : VariantHelpers::getWithValue (valueInterface->getCurrentValueAsString());
+
+            sendAccessibilityPropertyChangedEvent (*this, propertyType, value);
+        }
+
+        return;
+    }
+
+    auto event = [eventType]() -> EVENTID
+    {
+        switch (eventType)
+        {
+            case AccessibilityEvent::textSelectionChanged:  return UIA_Text_TextSelectionChangedEventId;
+            case AccessibilityEvent::textChanged:           return UIA_Text_TextChangedEventId;
+            case AccessibilityEvent::structureChanged:      return UIA_StructureChangedEventId;
+            case AccessibilityEvent::rowSelectionChanged:   return UIA_SelectionItem_ElementSelectedEventId;
+            case AccessibilityEvent::titleChanged:
+            case AccessibilityEvent::valueChanged:          break;
+        }
+
+        return {};
+    }();
+
+    if (event != EVENTID{})
+        sendAccessibilityAutomationEvent (*this, event);
+}
+
+struct SpVoiceWrapper final : public DeletedAtShutdown
+{
+    SpVoiceWrapper()
+    {
+        [[maybe_unused]] auto hr = voice.CoCreateInstance (CLSID_SpVoice);
+
+        jassert (SUCCEEDED (hr));
+    }
+
+    ~SpVoiceWrapper() override
+    {
+        clearSingletonInstance();
+    }
+
+    ComSmartPtr<ISpVoice> voice;
+
+    HIGGS_DECLARE_SINGLETON_INLINE (SpVoiceWrapper, false)
+};
+
+
+void AccessibilityHandler::postAnnouncement (const String& announcementString, AnnouncementPriority priority)
+{
+    if (! areAnyAccessibilityClientsActive())
+        return;
+
+    if (auto* sharedVoice = SpVoiceWrapper::getInstance())
+    {
+        auto voicePriority = [priority]
+        {
+            switch (priority)
+            {
+                case AnnouncementPriority::low:    return SPVPRI_OVER;
+                case AnnouncementPriority::medium: return SPVPRI_NORMAL;
+                case AnnouncementPriority::high:   return SPVPRI_ALERT;
+            }
+
+            jassertfalse;
+            return SPVPRI_OVER;
+        }();
+
+        sharedVoice->voice->SetPriority (voicePriority);
+        sharedVoice->voice->Speak (announcementString.toWideCharPointer(), SPF_ASYNC, nullptr);
+    }
+}
+
+bool AccessibilityHandler::areAnyAccessibilityClientsActive()
+{
+    return WindowsAccessibility::areAnyAccessibilityClientsActive();
+}
+
+HIGGS_END_IGNORE_WARNINGS_GCC_LIKE
+
+} // namespace higgs
