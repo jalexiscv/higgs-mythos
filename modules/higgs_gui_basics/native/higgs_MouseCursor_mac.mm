@@ -1,0 +1,193 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+#if HIGGS_MAC
+
+//==============================================================================
+class MouseCursor::PlatformSpecificHandle
+{
+public:
+    PlatformSpecificHandle (const MouseCursor::StandardCursorType type)
+        : cursorHandle (createCursor (type)) {}
+
+    PlatformSpecificHandle (const detail::CustomMouseCursorInfo& info)
+        : cursorHandle (createCursor (info)) {}
+
+    ~PlatformSpecificHandle()
+    {
+        [cursorHandle release];
+    }
+
+    static void showInWindow (PlatformSpecificHandle* handle, ComponentPeer*)
+    {
+        auto c = [&]
+        {
+            if (handle == nullptr || handle->cursorHandle == nullptr)
+                return [NSCursor arrowCursor];
+
+            return handle->cursorHandle;
+        }();
+
+        [c set];
+    }
+
+private:
+    static NSCursor* fromNSImage (NSImage* im, NSPoint hotspot)
+    {
+        NSCursor* c = [[NSCursor alloc] initWithImage: im
+                                              hotSpot: hotspot];
+        [im release];
+        return c;
+    }
+
+    static NSCursor* fromHIServices (const char* filename)
+    {
+        HIGGS_AUTORELEASEPOOL
+        {
+            auto cursorPath = String ("/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/"
+                                      "HIServices.framework/Versions/A/Resources/cursors/")
+                              + filename;
+
+            NSImage* originalImage = [[NSImage alloc] initByReferencingFile: higgsStringToNS (cursorPath + "/cursor.pdf")];
+            NSSize originalSize = [originalImage size];
+            NSImage* resultImage   = [[NSImage alloc] initWithSize: originalSize];
+
+            for (int scale = 1; scale <= 4; ++scale)
+            {
+                NSAffineTransform* scaleTransform = [NSAffineTransform transform];
+                [scaleTransform scaleBy: (float) scale];
+
+                if (CGImageRef rasterCGImage = [originalImage CGImageForProposedRect: nil
+                                                                             context: nil
+                                                                               hints: [NSDictionary dictionaryWithObjectsAndKeys: scaleTransform, NSImageHintCTM, nil]])
+                {
+                    NSBitmapImageRep* imageRep = [[NSBitmapImageRep alloc] initWithCGImage: rasterCGImage];
+                    [imageRep setSize: originalSize];
+
+                    [resultImage addRepresentation: imageRep];
+                    [imageRep release];
+                }
+                else
+                {
+                    return nil;
+                }
+            }
+
+            [originalImage release];
+
+            NSDictionary* info = [NSDictionary dictionaryWithContentsOfFile: higgsStringToNS (cursorPath + "/info.plist")];
+
+            auto hotspotX = (float) [[info valueForKey: nsStringLiteral ("hotx")] doubleValue];
+            auto hotspotY = (float) [[info valueForKey: nsStringLiteral ("hoty")] doubleValue];
+
+            return fromNSImage (resultImage, NSMakePoint (hotspotX, hotspotY));
+        }
+    }
+    static NSCursor* createCursor (const detail::CustomMouseCursorInfo& info)
+    {
+        return fromNSImage (imageToNSImage (info.image),
+                            NSMakePoint (info.hotspot.x, info.hotspot.y));
+    }
+
+    static NSCursor* createCursor (const MouseCursor::StandardCursorType type)
+    {
+        HIGGS_AUTORELEASEPOOL
+        {
+            NSCursor* c = nil;
+
+            switch (type)
+            {
+                case NormalCursor:
+                case ParentCursor:          c = [NSCursor arrowCursor]; break;
+                case NoCursor:              return createCursor ({ ScaledImage (Image (Image::ARGB, 8, 8, true)), {} });
+                case DraggingHandCursor:    c = [NSCursor openHandCursor]; break;
+                case WaitCursor:            c = [NSCursor arrowCursor]; break; // avoid this on the mac, let the OS provide the beachball
+                case IBeamCursor:           c = [NSCursor IBeamCursor]; break;
+                case PointingHandCursor:    c = [NSCursor pointingHandCursor]; break;
+                case LeftEdgeResizeCursor:  c = [NSCursor resizeLeftCursor]; break;
+                case RightEdgeResizeCursor: c = [NSCursor resizeRightCursor]; break;
+                case CrosshairCursor:       c = [NSCursor crosshairCursor]; break;
+
+                case CopyingCursor:
+                {
+                    c = [NSCursor dragCopyCursor];
+                    break;
+                }
+
+                case UpDownResizeCursor:
+                case TopEdgeResizeCursor:
+                case BottomEdgeResizeCursor:
+                    if (NSCursor* m = fromHIServices ("resizenorthsouth"))
+                        return m;
+
+                    c = [NSCursor resizeUpDownCursor];
+                    break;
+
+                case LeftRightResizeCursor:
+                    if (NSCursor* m = fromHIServices ("resizeeastwest"))
+                        return m;
+
+                    c = [NSCursor resizeLeftRightCursor];
+                    break;
+
+                case TopLeftCornerResizeCursor:
+                case BottomRightCornerResizeCursor:
+                    return fromHIServices ("resizenorthwestsoutheast");
+
+                case TopRightCornerResizeCursor:
+                case BottomLeftCornerResizeCursor:
+                    return fromHIServices ("resizenortheastsouthwest");
+
+                case UpDownLeftRightResizeCursor:
+                    return fromHIServices ("move");
+
+                case NumStandardCursorTypes:
+                default:
+                    jassertfalse;
+                    break;
+            }
+
+            [c retain];
+            return c;
+        }
+    }
+
+    NSCursor* cursorHandle;
+};
+
+#else
+
+class MouseCursor::PlatformSpecificHandle
+{
+public:
+    PlatformSpecificHandle (const MouseCursor::StandardCursorType)      {}
+    PlatformSpecificHandle (const detail::CustomMouseCursorInfo&)       {}
+
+    static void showInWindow (PlatformSpecificHandle*, ComponentPeer*)  {}
+};
+
+#endif
+
+} // namespace higgs
