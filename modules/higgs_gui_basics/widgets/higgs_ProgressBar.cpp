@@ -1,0 +1,177 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+ProgressBar::ProgressBar (double& progress_, std::optional<Style> style_)
+   : progress { progress_ },
+     style { style_ }
+{
+}
+
+ProgressBar::ProgressBar (double& progress_)
+   : progress { progress_ }
+{
+}
+
+//==============================================================================
+void ProgressBar::setPercentageDisplay (const bool shouldDisplayPercentage)
+{
+    displayPercentage = shouldDisplayPercentage;
+    repaint();
+}
+
+void ProgressBar::setTextToDisplay (const String& text)
+{
+    displayPercentage = false;
+    displayedMessage = text;
+}
+
+void ProgressBar::setStyle (std::optional<Style> newStyle)
+{
+    style = newStyle;
+    repaint();
+}
+
+ProgressBar::Style ProgressBar::getResolvedStyle() const
+{
+    return style.value_or (getLookAndFeel().getDefaultProgressBarStyle (*this));
+}
+
+void ProgressBar::lookAndFeelChanged()
+{
+    setOpaque (getLookAndFeel().isProgressBarOpaque (*this));
+}
+
+void ProgressBar::colourChanged()
+{
+    lookAndFeelChanged();
+    repaint();
+}
+
+void ProgressBar::paint (Graphics& g)
+{
+    String text;
+
+    if (displayPercentage)
+    {
+        if (currentValue >= 0 && currentValue <= 1.0)
+            text << roundToInt (currentValue * 100.0) << '%';
+    }
+    else
+    {
+        text = displayedMessage;
+    }
+
+    const auto w = getWidth();
+    const auto h = getHeight();
+    const auto v = currentValue;
+
+    getLookAndFeel().drawProgressBar (g, *this, w, h, v, text);
+}
+
+void ProgressBar::visibilityChanged()
+{
+    if (isVisible())
+        startTimer (30);
+    else
+        stopTimer();
+}
+
+void ProgressBar::timerCallback()
+{
+    double newProgress = progress;
+
+    const uint32 now = Time::getMillisecondCounter();
+    const int timeSinceLastCallback = (int) (now - lastCallbackTime);
+    lastCallbackTime = now;
+
+    if (! approximatelyEqual (currentValue, newProgress)
+         || newProgress < 0 || newProgress >= 1.0
+         || currentMessage != displayedMessage)
+    {
+        if (currentValue < newProgress
+             && newProgress >= 0 && newProgress < 1.0
+             && currentValue >= 0 && currentValue < 1.0)
+        {
+            newProgress = jmin (currentValue + 0.0008 * timeSinceLastCallback,
+                                newProgress);
+        }
+
+        currentValue = newProgress;
+        currentMessage = displayedMessage;
+        repaint();
+
+        if (auto* handler = getAccessibilityHandler())
+            handler->notifyAccessibilityEvent (AccessibilityEvent::valueChanged);
+    }
+}
+
+//==============================================================================
+std::unique_ptr<AccessibilityHandler> ProgressBar::createAccessibilityHandler()
+{
+    class ProgressBarAccessibilityHandler final : public AccessibilityHandler
+    {
+    public:
+        explicit ProgressBarAccessibilityHandler (ProgressBar& progressBarToWrap)
+            : AccessibilityHandler (progressBarToWrap,
+                                    AccessibilityRole::progressBar,
+                                    AccessibilityActions{},
+                                    AccessibilityHandler::Interfaces { std::make_unique<ValueInterface> (progressBarToWrap) }),
+              progressBar (progressBarToWrap)
+        {
+        }
+
+        String getHelp() const override   { return progressBar.getTooltip(); }
+
+    private:
+        class ValueInterface final : public AccessibilityRangedNumericValueInterface
+        {
+        public:
+            explicit ValueInterface (ProgressBar& progressBarToWrap)
+                : progressBar (progressBarToWrap)
+            {
+            }
+
+            bool isReadOnly() const override                { return true; }
+            void setValue (double) override                 { jassertfalse; }
+            double getCurrentValue() const override         { return progressBar.progress; }
+            AccessibleValueRange getRange() const override  { return { { 0.0, 1.0 }, 0.001 }; }
+
+        private:
+            ProgressBar& progressBar;
+
+            //==============================================================================
+            HIGGS_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ValueInterface)
+        };
+
+        ProgressBar& progressBar;
+
+        //==============================================================================
+        HIGGS_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ProgressBarAccessibilityHandler)
+    };
+
+    return std::make_unique<ProgressBarAccessibilityHandler> (*this);
+}
+
+} // namespace higgs
