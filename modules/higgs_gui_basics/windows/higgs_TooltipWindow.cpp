@@ -1,0 +1,253 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+TooltipWindow::TooltipWindow (Component* parentComp, int delayMs)
+    : Component ("tooltip"),
+      millisecondsBeforeTipAppears (delayMs)
+{
+    setAlwaysOnTop (true);
+    setOpaque (true);
+    setAccessible (false);
+
+    if (parentComp != nullptr)
+        parentComp->addChildComponent (this);
+
+    auto& desktop = Desktop::getInstance();
+
+    if (desktop.getMainMouseSource().canHover())
+    {
+        desktop.addGlobalMouseListener (this);
+        startTimer (123);
+    }
+}
+
+TooltipWindow::~TooltipWindow()
+{
+    hideTip();
+    Desktop::getInstance().removeGlobalMouseListener (this);
+}
+
+void TooltipWindow::setMillisecondsBeforeTipAppears (const int newTimeMs) noexcept
+{
+    millisecondsBeforeTipAppears = newTimeMs;
+}
+
+void TooltipWindow::paint (Graphics& g)
+{
+    getLookAndFeel().drawTooltip (g, tipShowing, getWidth(), getHeight());
+}
+
+void TooltipWindow::mouseEnter (const MouseEvent& e)
+{
+    if (e.eventComponent == this)
+        hideTip();
+}
+
+void TooltipWindow::mouseDown (const MouseEvent&)
+{
+    if (isVisible())
+        dismissalMouseEventOccurred = true;
+}
+
+void TooltipWindow::mouseWheelMove (const MouseEvent&, const MouseWheelDetails&)
+{
+    if (isVisible())
+        dismissalMouseEventOccurred = true;
+}
+
+void TooltipWindow::updatePosition (const String& tip, Point<int> pos, Rectangle<int> parentArea)
+{
+    setBounds (getLookAndFeel().getTooltipBounds (tip, pos, parentArea));
+    setVisible (true);
+}
+
+#if HIGGS_DEBUG
+static Array<TooltipWindow*> activeTooltipWindows;
+#endif
+
+void TooltipWindow::displayTip (Point<int> screenPos, const String& tip)
+{
+    jassert (tip.isNotEmpty());
+
+    displayTipInternal (screenPos, tip, ShownManually::yes);
+}
+
+void TooltipWindow::displayTipInternal (Point<int> screenPos, const String& tip, ShownManually shownManually)
+{
+    if (! reentrant)
+    {
+        ScopedValueSetter<bool> setter (reentrant, true, false);
+
+        if (tipShowing != tip)
+        {
+            tipShowing = tip;
+            repaint();
+        }
+
+        if (auto* parent = getParentComponent())
+        {
+            updatePosition (tip, parent->getLocalPoint (nullptr, screenPos),
+                            parent->getLocalBounds());
+        }
+        else
+        {
+            const auto physicalPos = detail::ScalingHelpers::scaledScreenPosToUnscaled (screenPos);
+            const auto scaledPos = detail::ScalingHelpers::unscaledScreenPosToScaled (*this, physicalPos);
+            updatePosition (tip, scaledPos, Desktop::getInstance().getDisplays().getDisplayForPoint (screenPos.toFloat())->userBounds.getLargestIntegerWithin());
+
+            addToDesktop (DesktopWindowOptions().withStyleFlags (ComponentPeer::windowHasDropShadow
+                                                                 | ComponentPeer::windowIsTemporary
+                                                                 | ComponentPeer::windowIgnoresKeyPresses
+                                                                 | ComponentPeer::windowIgnoresMouseClicks)
+                                                .withAssociatedComponent (lastComponentUnderMouse.getComponent()));
+        }
+
+       #if HIGGS_DEBUG
+        activeTooltipWindows.addIfNotAlreadyThere (this);
+
+        auto* parent = getParentComponent();
+
+        for (auto* w : activeTooltipWindows)
+        {
+            if (w != nullptr && w != this && w->tipShowing == tipShowing && w->getParentComponent() == parent)
+            {
+                // Looks like you have more than one TooltipWindow showing the same tip.
+                // Be careful not to create more than one instance of this class with the
+                // same parent component!
+                jassertfalse;
+            }
+        }
+       #endif
+
+        toFront (false);
+        manuallyShownTip = shownManually == ShownManually::yes ? tip : String();
+        dismissalMouseEventOccurred = false;
+    }
+}
+
+String TooltipWindow::getTipFor (Component& c)
+{
+    if (detail::WindowingHelpers::isForegroundOrEmbeddedProcess (&c)
+         && ! ModifierKeys::getCurrentModifiers().isAnyMouseButtonDown())
+    {
+        if (auto* ttc = dynamic_cast<TooltipClient*> (&c))
+            if (! c.isCurrentlyBlockedByAnotherModalComponent())
+                return ttc->getTooltip();
+    }
+
+    return {};
+}
+
+void TooltipWindow::hideTip()
+{
+    if (isVisible() && ! reentrant)
+    {
+        tipShowing = {};
+        manuallyShownTip = {};
+        dismissalMouseEventOccurred = false;
+
+        removeFromDesktop();
+        setVisible (false);
+
+        lastHideTime = Time::getApproximateMillisecondCounter();
+
+       #if HIGGS_DEBUG
+        activeTooltipWindows.removeAllInstancesOf (this);
+       #endif
+    }
+}
+
+float TooltipWindow::getDesktopScaleFactor() const
+{
+    if (lastComponentUnderMouse != nullptr)
+        return Component::getApproximateScaleFactorForComponent (lastComponentUnderMouse);
+
+    return Component::getDesktopScaleFactor();
+}
+
+std::unique_ptr<AccessibilityHandler> TooltipWindow::createAccessibilityHandler()
+{
+    return createIgnoredAccessibilityHandler (*this);
+}
+
+void TooltipWindow::timerCallback()
+{
+    const auto mouseSource = Desktop::getInstance().getMainMouseSource();
+    auto* newComp = mouseSource.isTouch() ? nullptr : mouseSource.getComponentUnderMouse();
+
+    if (manuallyShownTip.isNotEmpty())
+    {
+        if (dismissalMouseEventOccurred || newComp == nullptr)
+            hideTip();
+
+        return;
+    }
+
+    if (newComp == nullptr || getParentComponent() == nullptr || newComp->getPeer() == getPeer())
+    {
+        const auto newTip = newComp != nullptr ? getTipFor (*newComp) : String();
+
+        const auto mousePos = mouseSource.getScreenPosition();
+        const auto mouseMovedQuickly = (mousePos.getDistanceFrom (lastMousePos) > 12);
+        lastMousePos = mousePos;
+
+        const auto tipChanged = (newTip != lastTipUnderMouse || newComp != lastComponentUnderMouse);
+        const auto now = Time::getApproximateMillisecondCounter();
+
+        lastComponentUnderMouse = newComp;
+        lastTipUnderMouse = newTip;
+
+        if (tipChanged || dismissalMouseEventOccurred || mouseMovedQuickly)
+            lastCompChangeTime = now;
+
+        const auto showTip = [this, &mouseSource, &mousePos, &newTip]
+        {
+            if (mouseSource.getLastMouseDownPosition() != lastMousePos)
+                displayTipInternal (mousePos.roundToInt(), newTip, ShownManually::no);
+        };
+
+        if (isVisible() || now < lastHideTime + 500)
+        {
+            // if a tip is currently visible (or has just disappeared), update to a new one
+            // immediately if needed
+            if (newComp == nullptr || dismissalMouseEventOccurred || newTip.isEmpty())
+                hideTip();
+            else if (tipChanged)
+                showTip();
+        }
+        else
+        {
+            // if there isn't currently a tip, but one is needed, only let it appear after a timeout
+            if (newTip.isNotEmpty()
+                && newTip != tipShowing
+                && now > lastCompChangeTime + (uint32) millisecondsBeforeTipAppears)
+            {
+                showTip();
+            }
+        }
+    }
+}
+
+} // namespace higgs
