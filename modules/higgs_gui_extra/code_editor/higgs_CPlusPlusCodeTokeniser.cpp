@@ -1,0 +1,71 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+//==============================================================================
+CPlusPlusCodeTokeniser::CPlusPlusCodeTokeniser() {}
+CPlusPlusCodeTokeniser::~CPlusPlusCodeTokeniser() {}
+
+int CPlusPlusCodeTokeniser::readNextToken (CodeDocument::Iterator& source)
+{
+    return CppTokeniserFunctions::readNextToken (source);
+}
+
+CodeEditorComponent::ColourScheme CPlusPlusCodeTokeniser::getDefaultColourScheme()
+{
+    struct Type
+    {
+        const char* name;
+        uint32 colour;
+    };
+
+    const Type types[] =
+    {
+        { "Error",              0xffcc0000 },
+        { "Comment",            0xff00aa00 },
+        { "Keyword",            0xff0000cc },
+        { "Operator",           0xff225500 },
+        { "Identifier",         0xff000000 },
+        { "Integer",            0xff880000 },
+        { "Float",              0xff885500 },
+        { "String",             0xff990099 },
+        { "Bracket",            0xff000055 },
+        { "Punctuation",        0xff004400 },
+        { "Preprocessor Text",  0xff660000 }
+    };
+
+    CodeEditorComponent::ColourScheme cs;
+
+    for (auto& t : types)
+        cs.set (t.name, Colour (t.colour));
+
+    return cs;
+}
+
+bool CPlusPlusCodeTokeniser::isReservedKeyword (const String& token) noexcept
+{
+    return CppTokeniserFunctions::isReservedKeyword (token.getCharPointer(), token.length());
+}
+
+} // namespace higgs
