@@ -1,0 +1,163 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs::universal_midi_packets
+{
+
+//==============================================================================
+/**
+    An interface class for entities that consume Universal MIDI Packets from some producer.
+
+    @tags{Audio}
+*/
+struct Consumer
+{
+    Consumer() = default;
+
+    Consumer (const Consumer&) = default;
+    Consumer (Consumer&&) noexcept = default;
+
+    Consumer& operator= (const Consumer&) = default;
+    Consumer& operator= (Consumer&&) noexcept = default;
+
+    virtual ~Consumer() noexcept = default;
+
+    /** This will be called each time a new packet is ready for processing. */
+    virtual void consume (Iterator b, Iterator e, double time) = 0;
+};
+
+//==============================================================================
+/**
+    An input (from the HIGGS project's perspective) that receives messages sent by an endpoint.
+
+    An Input is conceptually similar to a unique_ptr, in that it's a nullable move-only type.
+    You can check the null state of an instance by calling isAlive().
+    isAlive() will return true for an Input that's currently connected, or false otherwise.
+    In particular, isAlive() will return false for a default-constructed Input.
+    If isAlive() returns false, you should avoid calling other member functions:
+    although this won't result in undefined behaviour, none of the functions will produce useful
+    results in this state.
+
+    In the case that the device connected to the Input becomes unavailable (e.g. it is unplugged or
+    the bluetooth connection is dropped), the Input will null itself, and calls to isAlive() will
+    return false. You can register a callback to handle this event by calling
+    addDisconnectionListener().
+
+    A particular pitfall to watch out for is calling addConsumer(), removeConsumer(),
+    addDisconnectionListener(), and removeDisconnectionListener() on a default-constructed Input
+    or other Input for which isAlive() returns false. This will have no effect. Instead, if you want
+    to attach listeners to an Input, you should use Session::connectInput() to create an Input,
+    and ensure that isAlive() returns true on that Input before attaching listeners.
+
+    @tags{Audio}
+*/
+class Input
+{
+public:
+    /** Creates a disconnected input.
+        A default-constructed input will never receive any messages.
+
+        Instances should only be created on the main thread.
+    */
+    Input();
+
+    /** Destructor.
+
+        Instances should only be destroyed on the main thread in order to avoid potential races
+        with disconnection callbacks, which also happen on the main thread.
+    */
+    ~Input();
+
+    Input (Input&&) noexcept;
+    Input& operator= (Input&&) noexcept;
+
+    Input (const Input&) = delete;
+    Input& operator= (const Input&) = delete;
+
+    /** Returns this connection's endpoint. */
+    EndpointId getEndpointId() const;
+
+    /** Returns the protocol that was requested when creating this connection. */
+    PacketProtocol getProtocol() const;
+
+    /** Attaches a receiver that will receive MIDI messages from this input.
+
+        Incoming messages will be converted to the protocol that was requested when
+        opening the Input.
+
+        If isAlive() returns false at the point where this function is called, this function
+        will have no effect. This can commonly happen when attempting to add listeners to a
+        default-constructed Input, or if the input device got disconnected.
+
+        It is an error to add or remove a consumer from within the consumer callback.
+        This will cause deadlocks, so be careful!
+
+        You should only add and remove consumers from the main thread.
+
+        Calls to Consumer::consume() will happen on a separate thread, often with high
+        or even realtime priority.
+    */
+    void addConsumer (Consumer& r);
+
+    /** Detaches the receiver so that it will no longer receive MIDI messages from this
+        Input.
+
+        It is an error to add or remove a consumer from within the consumer callback.
+        This will cause deadlocks, so be careful!
+
+        @see addConsumer()
+    */
+    void removeConsumer (Consumer& r);
+
+    /** Attaches a listener that will be notified when this endpoint is disconnected.
+
+        Disconnection notifications will be sent on the main thread, and listeners should
+        only be added or removed on the main thread in order to avoid potential data races.
+
+        Calling this function on an instance for which isAlive() returns false has no effect.
+    */
+    void addDisconnectionListener (DisconnectionListener& r);
+
+    /** Removes a disconnection listener.
+
+        @see addDisconnectionListener()
+    */
+    void removeDisconnectionListener (DisconnectionListener& r);
+
+    /** True if this connection is currently active.
+
+        This function returns false for a default-constructed instance.
+    */
+    bool isAlive() const;
+
+    explicit operator bool() const { return isAlive(); }
+
+    /** @internal */
+    class Impl;
+
+private:
+    explicit Input (std::unique_ptr<Impl>);
+
+    std::unique_ptr<Impl> impl;
+};
+
+}
