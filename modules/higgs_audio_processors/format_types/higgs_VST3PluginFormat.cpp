@@ -1,0 +1,647 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+#if HIGGS_INTERNAL_HAS_VST3
+
+#include <higgs_audio_processors_headless/format_types/higgs_VST3PluginFormatImpl.h>
+#include <higgs_audio_processors/utilities/higgs_NSViewComponentWithParent.h>
+
+namespace higgs
+{
+
+// UB Sanitizer doesn't necessarily have instrumentation for loaded plugins, so
+// it won't recognize the dynamic types of pointers to the plugin's interfaces.
+HIGGS_BEGIN_NO_SANITIZE ("vptr")
+
+class VST3HostContextWithContextMenu : public VST3HostContextHeadless
+{
+public:
+    Vst::IContextMenu* PLUGIN_API createContextMenu (IPlugView*, const Vst::ParamID*) override
+    {
+        if (auto* p = getPlugin())
+        {
+            auto* result = new ContextMenu (*p);
+            result->addRef();
+            return result;
+        }
+
+        return nullptr;
+    }
+
+private:
+    struct ContextMenu final : public Vst::IContextMenu
+    {
+        explicit ContextMenu (VST3PluginInstanceHeadless& pluginInstance)  : owner (pluginInstance) {}
+        ~ContextMenu() = default;
+
+        HIGGS_DECLARE_VST3_COM_REF_METHODS
+        HIGGS_DECLARE_VST3_COM_QUERY_METHODS
+
+        Steinberg::int32 PLUGIN_API getItemCount() override     { return (Steinberg::int32) items.size(); }
+
+        tresult PLUGIN_API addItem (const Item& item, IContextMenuTarget* target) override
+        {
+            jassert (target != nullptr);
+
+            ItemAndTarget newItem;
+            newItem.item = item;
+            newItem.target = VSTComSmartPtr (target, IncrementRef::yes);
+
+            items.add (newItem);
+            return kResultOk;
+        }
+
+        tresult PLUGIN_API removeItem (const Item& toRemove, IContextMenuTarget* target) override
+        {
+            for (int i = items.size(); --i >= 0;)
+            {
+                auto& item = items.getReference (i);
+
+                if (item.item.tag == toRemove.tag && item.target.get() == target)
+                    items.remove (i);
+            }
+
+            return kResultOk;
+        }
+
+        tresult PLUGIN_API getItem (Steinberg::int32 tag, Item& result, IContextMenuTarget** target) override
+        {
+            for (int i = 0; i < items.size(); ++i)
+            {
+                auto& item = items.getReference (i);
+
+                if (item.item.tag == tag)
+                {
+                    result = item.item;
+
+                    if (target != nullptr)
+                        *target = item.target.get();
+
+                    return kResultTrue;
+                }
+            }
+
+            zerostruct (result);
+            return kResultFalse;
+        }
+
+        tresult PLUGIN_API popup (UCoord x, UCoord y) override
+        {
+            Array<const Item*> subItemStack;
+            OwnedArray<PopupMenu> menuStack;
+            PopupMenu* topLevelMenu = menuStack.add (new PopupMenu());
+
+            for (int i = 0; i < items.size(); ++i)
+            {
+                auto& item = items.getReference (i).item;
+                auto* menuToUse = menuStack.getLast();
+
+                if (hasFlag (item.flags, Item::kIsGroupStart & ~Item::kIsDisabled))
+                {
+                    subItemStack.add (&item);
+                    menuStack.add (new PopupMenu());
+                }
+                else if (hasFlag (item.flags, Item::kIsGroupEnd))
+                {
+                    if (auto* subItem = subItemStack.getLast())
+                    {
+                        if (auto* m = menuStack [menuStack.size() - 2])
+                            m->addSubMenu (toString (subItem->name), *menuToUse,
+                                           ! hasFlag (subItem->flags, Item::kIsDisabled),
+                                           nullptr,
+                                           hasFlag (subItem->flags, Item::kIsChecked));
+
+                        menuStack.removeLast (1);
+                        subItemStack.removeLast (1);
+                    }
+                }
+                else if (hasFlag (item.flags, Item::kIsSeparator))
+                {
+                    menuToUse->addSeparator();
+                }
+                else
+                {
+                    menuToUse->addItem (item.tag != 0 ? (int) item.tag : (int) zeroTagReplacement,
+                                        toString (item.name),
+                                        ! hasFlag (item.flags, Item::kIsDisabled),
+                                        hasFlag (item.flags, Item::kIsChecked));
+                }
+            }
+
+            PopupMenu::Options options;
+
+            if (auto* ed = owner.getActiveEditor())
+            {
+               #if HIGGS_WINDOWS && HIGGS_WIN_PER_MONITOR_DPI_AWARE
+                if (auto* peer = ed->getPeer())
+                {
+                    auto scale = peer->getPlatformScaleFactor();
+
+                    x = roundToInt (x / scale);
+                    y = roundToInt (y / scale);
+                }
+               #endif
+
+                options = options.withTargetScreenArea (ed->getScreenBounds().translated ((int) x, (int) y).withSize (1, 1));
+            }
+
+           #if HIGGS_MODAL_LOOPS_PERMITTED
+            // Unfortunately, Steinberg's docs explicitly say this should be modal.
+            handleResult (topLevelMenu->showMenu (options));
+           #else
+            topLevelMenu->showMenuAsync (options,
+                                         ModalCallbackFunction::create (menuFinished,
+                                                                        VSTComSmartPtr (this, IncrementRef::yes)));
+           #endif
+
+            return kResultOk;
+        }
+
+       #if ! HIGGS_MODAL_LOOPS_PERMITTED
+        static void menuFinished (int modalResult, VSTComSmartPtr<ContextMenu> menu)  { menu->handleResult (modalResult); }
+       #endif
+
+    private:
+        enum { zeroTagReplacement = 0x7fffffff };
+
+        Atomic<int> refCount;
+        VST3PluginInstanceHeadless& owner;
+
+        struct ItemAndTarget
+        {
+            Item item;
+            VSTComSmartPtr<IContextMenuTarget> target;
+        };
+
+        Array<ItemAndTarget> items;
+
+        void handleResult (int result)
+        {
+            if (result == 0)
+                return;
+
+            if (result == zeroTagReplacement)
+                result = 0;
+
+            for (int i = 0; i < items.size(); ++i)
+            {
+                auto& item = items.getReference (i);
+
+                if ((int) item.item.tag == result)
+                {
+                    if (item.target != nullptr)
+                        item.target->executeMenuItem ((Steinberg::int32) result);
+
+                    break;
+                }
+            }
+        }
+
+        HIGGS_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ContextMenu)
+    };
+};
+
+struct VST3PluginWindow final : public AudioProcessorEditor,
+                                public RunLoop,
+                                public IPlugFrame,
+                                private ComponentMovementWatcher,
+                                private ComponentBoundsConstrainer
+{
+    VST3PluginWindow (AudioPluginInstance* owner, VSTComSmartPtr<IPlugView> pluginView)
+        : AudioProcessorEditor (owner),
+          ComponentMovementWatcher (this),
+          view (pluginView)
+         #if HIGGS_MAC
+        , embeddedComponent (*owner)
+         #endif
+    {
+        setSize (10, 10);
+        setOpaque (true);
+        setVisible (true);
+        setConstrainer (this);
+
+        warnOnFailure (view->setFrame (this));
+        view->queryInterface (IPlugViewContentScaleSupport::iid, (void**) &scaleInterface);
+
+        resizeToFit();
+
+        setResizable (view->canResize() == kResultTrue, false);
+    }
+
+    ~VST3PluginWindow() override
+    {
+        if (scaleInterface != nullptr)
+            scaleInterface->release();
+
+        #if HIGGS_LINUX || HIGGS_BSD
+         embeddedComponent.removeClient();
+        #endif
+
+        if (attachedCalled)
+            warnOnFailure (view->removed());
+
+        warnOnFailure (view->setFrame (nullptr));
+
+        processor.editorBeingDeleted (this);
+
+       #if HIGGS_MAC
+        embeddedComponent.setView (nullptr);
+       #endif
+
+        view = nullptr;
+    }
+
+    tresult PLUGIN_API queryInterface (const TUID queryIid, void** obj) override
+    {
+        return testForMultiple (*this,
+                                queryIid,
+                               #if HIGGS_LINUX || HIGGS_BSD
+                                UniqueBase<Linux::IRunLoop>{},
+                               #endif
+                                UniqueBase<IPlugFrame>{}).extract (obj);
+    }
+
+    HIGGS_DECLARE_VST3_COM_REF_METHODS
+
+    void paint (Graphics& g) override
+    {
+        g.fillAll (Colours::black);
+    }
+
+    void mouseWheelMove (const MouseEvent&, const MouseWheelDetails& wheel) override
+    {
+        view->onWheel (wheel.deltaY);
+    }
+
+    void focusGained (FocusChangeType) override     { view->onFocus (true); }
+    void focusLost (FocusChangeType) override       { view->onFocus (false); }
+
+    /** It seems that most, if not all, plugins do their own keyboard hooks,
+        but IPlugView does have a set of keyboard related methods...
+    */
+    bool keyStateChanged (bool /*isKeyDown*/) override  { return true; }
+    bool keyPressed (const KeyPress& /*key*/) override  { return true; }
+
+private:
+    void checkBounds (Rectangle<int>& bounds,
+                      const Rectangle<int>&,
+                      const Rectangle<int>&,
+                      bool,
+                      bool,
+                      bool,
+                      bool) override
+    {
+        auto rect = componentToVST3Rect (bounds);
+        auto constrainedRect = rect;
+
+        if (view->canResize() == kResultTrue)
+            view->checkSizeConstraint (&constrainedRect);
+        else
+            view->getSize (&constrainedRect);
+
+        // Prevent inadvertent window growth while dragging; see componentMovedOrResized below
+        if (constrainedRect.getWidth() != rect.getWidth() || constrainedRect.getHeight() != rect.getHeight())
+            bounds = vst3ToComponentRect (constrainedRect);
+    }
+
+    //==============================================================================
+    void componentPeerChanged() override {}
+
+    /*  Convert from the component's coordinate system to the hosted VST3's coordinate system. */
+    ViewRect componentToVST3Rect (Rectangle<int> r) const
+    {
+        const auto combinedScale = nativeScaleFactor * getDesktopScaleFactor();
+        const auto physical = (localAreaToGlobal (r.toFloat()) * combinedScale).toNearestInt();
+        return { 0, 0, physical.getWidth(), physical.getHeight() };
+    }
+
+    /*  Convert from the hosted VST3's coordinate system to the component's coordinate system. */
+    Rectangle<int> vst3ToComponentRect (const ViewRect& vr) const
+    {
+        const auto combinedScale = nativeScaleFactor * getDesktopScaleFactor();
+        const auto floatRect = Rectangle { (float) vr.right, (float) vr.bottom } / combinedScale;
+        return getLocalArea (nullptr, floatRect).toNearestInt();
+    }
+
+    void componentMovedOrResized (bool, bool wasResized) override
+    {
+        if (recursiveResize || ! wasResized || getTopLevelComponent()->getPeer() == nullptr)
+            return;
+
+        if (view->canResize() == kResultTrue)
+        {
+            // componentToVST3Rect will apply DPI scaling and round to the nearest integer; vst3ToComponentRect
+            // will invert the DPI scaling, but the logical size returned by vst3ToComponentRect may be
+            // different from the original size due to floating point rounding if the scale factor is > 100%.
+            // This can cause the window to unexpectedly grow while it's moving.
+            auto scaledRect = componentToVST3Rect (getLocalBounds());
+
+            auto constrainedRect = scaledRect;
+            view->checkSizeConstraint (&constrainedRect);
+
+            const auto tieRect = [] (const auto& x) { return std::tuple (x.getWidth(), x.getHeight()); };
+
+            // Only update the size if the constrained size is actually different
+            if (tieRect (constrainedRect) != tieRect (scaledRect))
+            {
+                const ScopedValueSetter recursiveResizeSetter (recursiveResize, true);
+
+                const auto logicalSize = vst3ToComponentRect (constrainedRect);
+                setSize (logicalSize.getWidth(), logicalSize.getHeight());
+            }
+
+            embeddedComponent.setBounds (getLocalBounds());
+
+            view->onSize (&constrainedRect);
+        }
+        else
+        {
+            ViewRect rect;
+            warnOnFailure (view->getSize (&rect));
+
+            resizeWithRect (embeddedComponent, rect);
+        }
+
+        // Some plugins don't update their cursor correctly when mousing out the window
+        Desktop::getInstance().getMainMouseSource().forceMouseCursorUpdate();
+    }
+
+    using ComponentMovementWatcher::componentMovedOrResized;
+
+    void componentVisibilityChanged() override
+    {
+        attachPluginWindow();
+        resizeToFit();
+        componentMovedOrResized (true, true);
+    }
+
+    using ComponentMovementWatcher::componentVisibilityChanged;
+
+    void resizeToFit()
+    {
+        ViewRect rect;
+        warnOnFailure (view->getSize (&rect));
+        resizeWithRect (*this, rect);
+    }
+
+    tresult PLUGIN_API resizeView (IPlugView* incomingView, ViewRect* newSize) override
+    {
+        const ScopedValueSetter<bool> recursiveResizeSetter (recursiveResize, true);
+
+        if (incomingView != nullptr && newSize != nullptr && incomingView == view.get())
+        {
+            const auto oldPhysicalSize = componentToVST3Rect (getLocalBounds());
+            const auto logicalSize = vst3ToComponentRect (*newSize);
+            setSize (logicalSize.getWidth(), logicalSize.getHeight());
+            embeddedComponent.setSize (logicalSize.getWidth(), logicalSize.getHeight());
+
+           #if HIGGS_WINDOWS
+            embeddedComponent.updateHWNDBounds();
+           #elif HIGGS_LINUX || HIGGS_BSD
+            embeddedComponent.updateEmbeddedBounds();
+           #endif
+
+            // According to the VST3 Workflow Diagrams, a resizeView from the plugin should
+            // always trigger a response from the host which confirms the new size.
+            auto currentPhysicalSize = componentToVST3Rect (getLocalBounds());
+
+            if (currentPhysicalSize.getWidth() != oldPhysicalSize.getWidth()
+                || currentPhysicalSize.getHeight() != oldPhysicalSize.getHeight()
+                || ! isInOnSize)
+            {
+                // Guard against plug-ins immediately calling resizeView() with the same size
+                const ScopedValueSetter<bool> inOnSizeSetter (isInOnSize, true);
+                view->onSize (&currentPhysicalSize);
+            }
+
+            return kResultTrue;
+        }
+
+        jassertfalse;
+        return kInvalidArgument;
+    }
+
+    //==============================================================================
+    void resizeWithRect (Component& comp, const ViewRect& rect) const
+    {
+        const auto logicalSize = vst3ToComponentRect (rect);
+        comp.setSize (jmax (10, logicalSize.getWidth()),
+                      jmax (10, logicalSize.getHeight()));
+    }
+
+    void attachPluginWindow()
+    {
+        if (pluginHandle == HandleFormat{})
+        {
+            #if HIGGS_WINDOWS
+             pluginHandle = static_cast<HWND> (embeddedComponent.getHWND());
+            #endif
+
+             embeddedComponent.setBounds (getLocalBounds());
+             addAndMakeVisible (embeddedComponent);
+
+            #if HIGGS_MAC
+             pluginHandle = (HandleFormat) embeddedComponent.getView();
+            #elif HIGGS_LINUX || HIGGS_BSD
+             pluginHandle = (HandleFormat) embeddedComponent.getHostWindowID();
+            #endif
+
+            if (pluginHandle == HandleFormat{})
+            {
+                jassertfalse;
+                return;
+            }
+
+            [[maybe_unused]] const auto attachedResult = view->attached ((void*) pluginHandle, defaultVST3WindowType);
+            [[maybe_unused]] const auto warning = warnOnFailure (attachedResult);
+
+            if (attachedResult == kResultOk)
+                attachedCalled = true;
+
+            if (auto* peer = getPeer())
+            {
+                nativeScaleFactor = (float) peer->getPlatformScaleFactor();
+            }
+
+            updatePluginScale();
+
+           #if HIGGS_WINDOWS
+            // Make sure the embedded component window is the right size
+            // and invalidate the embedded HWND and any child windows
+            embeddedComponent.updateHWNDBounds();
+           #endif
+        }
+    }
+
+    void updatePluginScale()
+    {
+        if (scaleInterface != nullptr)
+            setContentScaleFactor();
+        else
+            resizeToFit();
+    }
+
+    void setContentScaleFactor()
+    {
+        if (scaleInterface != nullptr)
+        {
+            [[maybe_unused]] const auto result = scaleInterface->setContentScaleFactor ((IPlugViewContentScaleSupport::ScaleFactor) getEffectiveScale());
+
+           #if ! HIGGS_MAC
+            [[maybe_unused]] const auto warning = warnOnFailure (result);
+           #endif
+        }
+    }
+
+    void setScaleFactor (float s) override
+    {
+        userScaleFactor = s;
+        setContentScaleFactor();
+        resizeToFit();
+    }
+
+    float getEffectiveScale() const
+    {
+        return nativeScaleFactor * userScaleFactor;
+    }
+
+    //==============================================================================
+    Atomic<int> refCount { 1 };
+    VSTComSmartPtr<IPlugView> view;
+
+   #if HIGGS_WINDOWS
+    using HandleFormat = HWND;
+
+    struct ViewComponent final : public HWNDComponent
+    {
+        ViewComponent()
+        {
+            setOpaque (true);
+            inner.addToDesktop (0);
+
+            if (auto* peer = inner.getPeer())
+                setHWND (peer->getNativeHandle());
+        }
+
+        void paint (Graphics& g) override { g.fillAll (Colours::black); }
+
+    private:
+        struct Inner final : public Component
+        {
+            Inner() { setOpaque (true); }
+            void paint (Graphics& g) override { g.fillAll (Colours::black); }
+        };
+
+        Inner inner;
+    };
+
+    ViewComponent embeddedComponent;
+   #elif HIGGS_MAC
+    NSViewComponentWithParent embeddedComponent;
+    using HandleFormat = NSView*;
+   #elif HIGGS_LINUX || HIGGS_BSD
+    XEmbedComponent embeddedComponent { XEmbedComponentOptions{}.withWantsKeyboardFocus (true)
+                                                                .withAllowForeignWidgetToResizeComponent (false)
+                                                                .withIgnoreXembedMapped() };
+    using HandleFormat = Window;
+   #else
+    Component embeddedComponent;
+    using HandleFormat = void*;
+   #endif
+
+    HandleFormat pluginHandle = {};
+    bool recursiveResize = false, isInOnSize = false, attachedCalled = false;
+
+    IPlugViewContentScaleSupport* scaleInterface = nullptr;
+    float nativeScaleFactor = 1.0f;
+    float userScaleFactor = 1.0f;
+
+    struct ScaleNotifierCallback
+    {
+        VST3PluginWindow& window;
+
+        void operator() (float platformScale) const
+        {
+            MessageManager::callAsync ([ref = Component::SafePointer<VST3PluginWindow> (&window), platformScale]
+            {
+                if (auto* r = ref.getComponent())
+                {
+                    r->nativeScaleFactor = platformScale;
+                    r->setContentScaleFactor();
+                    r->resizeToFit();
+
+                   #if HIGGS_WINDOWS
+                    r->embeddedComponent.updateHWNDBounds();
+                   #elif HIGGS_LINUX || HIGGS_BSD
+                    r->embeddedComponent.updateEmbeddedBounds();
+                   #endif
+                }
+            });
+        }
+    };
+
+    NativeScaleFactorNotifier scaleNotifier { this, ScaleNotifierCallback { *this } };
+
+    //==============================================================================
+    HIGGS_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (VST3PluginWindow)
+};
+
+class VST3PluginInstance final : public VST3PluginInstanceHeadless
+{
+public:
+    using VST3PluginInstanceHeadless::VST3PluginInstanceHeadless;
+
+    bool hasEditor() const override
+    {
+        // (if possible, avoid creating a second instance of the editor, because that crashes some plugins)
+        if (getActiveEditor() != nullptr)
+            return true;
+
+        VSTComSmartPtr view { tryCreatingView(), IncrementRef::no };
+        return view != nullptr;
+    }
+
+    VST3PluginWindow* createEditor() override
+    {
+        if (VSTComSmartPtr view { tryCreatingView(), IncrementRef::no })
+            return new VST3PluginWindow (this, view);
+
+        return nullptr;
+    }
+};
+
+void VST3PluginFormat::createPluginInstance (const PluginDescription& description,
+                                             double,
+                                             int,
+                                             PluginCreationCallback callback)
+{
+    createVst3InstanceImpl<VST3PluginInstance> (*this,
+                                                { new VST3HostContextWithContextMenu, IncrementRef::no },
+                                                description,
+                                                callback);
+}
+
+HIGGS_END_NO_SANITIZE
+
+} // namespace higgs
+
+#endif
