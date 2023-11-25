@@ -1,0 +1,157 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+//==============================================================================
+/**
+    This maintains a list of known AudioPluginFormats.
+
+    @see AudioPluginFormat
+
+    @tags{Audio}
+*/
+class HIGGS_API  AudioPluginFormatManager
+{
+public:
+    //==============================================================================
+    AudioPluginFormatManager() = default;
+
+    //==============================================================================
+    /** This function has been removed. To add default formats to the manager,
+        use one of the new functions addDefaultFormatsToManager() or
+        addHeadlessDefaultFormatsToManager();
+    */
+    void addDefaultFormats() = delete;
+
+    //==============================================================================
+    /** Returns the number of types of format that are available.
+        Use getFormat() to get one of them.
+    */
+    int getNumFormats() const;
+
+    /** Returns one of the available formats.
+        @see getNumFormats
+    */
+    AudioPluginFormat* getFormat (int index) const;
+
+    /** Returns a list of all the registered formats. */
+    Array<AudioPluginFormat*> getFormats() const;
+
+    //==============================================================================
+    /** Adds a format to the list.
+        The object passed in will be owned and deleted by the manager.
+    */
+    [[deprecated ("Prefer the signature that accepts a unique_ptr")]]
+    void addFormat (AudioPluginFormat* f) { addFormat (rawToUniquePtr (f)); }
+
+    /** Adds a format to the list.
+        The object passed in will be owned and deleted by the manager.
+    */
+    void addFormat (std::unique_ptr<AudioPluginFormat>);
+
+    //==============================================================================
+    /** Tries to load the type for this description, by trying all the formats
+        that this manager knows about.
+
+        If it can't load the plugin, it returns nullptr and leaves a message in the
+        errorMessage string.
+
+        If you intend to instantiate a AudioUnit v3 plug-in then you must either
+        use the non-blocking asynchronous version below - or call this method from a
+        thread other than the message thread and without blocking the message
+        thread.
+    */
+    std::unique_ptr<AudioPluginInstance> createPluginInstance (const PluginDescription& description,
+                                                               double initialSampleRate, int initialBufferSize,
+                                                               String& errorMessage) const;
+
+    /** Tries to asynchronously load the type for this description, by trying
+        all the formats that this manager knows about.
+
+        The caller must supply a callback object which will be called when
+        the instantiation has completed.
+
+        If it can't load the plugin then the callback function will be called
+        passing a nullptr as the instance argument along with an error message.
+
+        The callback function will be called on the message thread so the caller
+        must not block the message thread.
+
+        The callback object will be deleted automatically after it has been
+        invoked.
+
+        The caller is responsible for deleting the instance that is passed to
+        the callback function.
+
+        If you intend to instantiate a AudioUnit v3 plug-in then you must use
+        this non-blocking asynchronous version - or call the synchronous method
+        from an auxiliary thread.
+    */
+    void createPluginInstanceAsync (const PluginDescription& description,
+                                    double initialSampleRate, int initialBufferSize,
+                                    AudioPluginFormat::PluginCreationCallback callback);
+
+    /** Tries to create an ::ARAFactoryWrapper for this description.
+
+        The result of the operation will be wrapped into an ARAFactoryResult,
+        which will be passed to a callback object supplied by the caller.
+
+        The operation may fail, in which case the callback will be called with
+        with a result object where ARAFactoryResult::araFactory.get() will return
+        a nullptr.
+
+        In case of success the returned ::ARAFactoryWrapper will ensure that
+        modules required for the correct functioning of the ARAFactory will remain
+        loaded for the lifetime of the object.
+    */
+    void createARAFactoryAsync (const PluginDescription& description,
+                                AudioPluginFormat::ARAFactoryCreationCallback callback) const;
+
+    /** Checks that the file or component for this plugin actually still exists.
+        (This won't try to load the plugin)
+    */
+    bool doesPluginStillExist (const PluginDescription&) const;
+
+private:
+    //==============================================================================
+    AudioPluginFormat* findFormatForDescription (const PluginDescription&, String& errorMessage) const;
+
+    OwnedArray<AudioPluginFormat> formats;
+
+    HIGGS_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginFormatManager)
+};
+
+/** Add all standard plugin formats to the AudioPluginFormatManager, *without* UI support.
+
+    If you use one of these formats to load a plugin, the resulting plugin will always return
+    false from hasEditor(), and return nullptr from createEditor().
+
+    This function is intended for use in commandline projects that never need to load plugin UIs.
+    In such cases, build times can be improved by omitting UI code from the project.
+
+    This is a cut-down version of the old AudioPluginFormatManager::addDefaultFormats().
+*/
+void addHeadlessDefaultFormatsToManager (AudioPluginFormatManager&);
+
+} // namespace higgs
