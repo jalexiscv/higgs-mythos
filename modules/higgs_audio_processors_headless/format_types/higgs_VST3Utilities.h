@@ -1,0 +1,226 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+#pragma once
+
+/** @cond */
+namespace higgs
+{
+
+HIGGS_BEGIN_NO_SANITIZE ("vptr")
+
+//==============================================================================
+#define HIGGS_DECLARE_VST3_COM_REF_METHODS \
+    Steinberg::uint32 PLUGIN_API addRef() override   { return (Steinberg::uint32) ++refCount; } \
+    Steinberg::uint32 PLUGIN_API release() override  { const int r = --refCount; if (r == 0) delete this; return (Steinberg::uint32) r; }
+
+#define HIGGS_DECLARE_VST3_COM_QUERY_METHODS \
+    Steinberg::tresult PLUGIN_API queryInterface (const Steinberg::TUID, void** obj) override \
+    { \
+        jassertfalse; \
+        *obj = nullptr; \
+        return Steinberg::kNotImplemented; \
+    }
+
+inline bool doUIDsMatch (const Steinberg::TUID a, const Steinberg::TUID b) noexcept
+{
+    return std::memcmp (a, b, sizeof (Steinberg::TUID)) == 0;
+}
+
+/*  Holds a tresult and a pointer to an object.
+
+    Useful for holding intermediate results of calls to queryInterface.
+*/
+class QueryInterfaceResult
+{
+public:
+    QueryInterfaceResult() = default;
+
+    QueryInterfaceResult (Steinberg::tresult resultIn, void* ptrIn)
+        : result (resultIn), ptr (ptrIn) {}
+
+    bool isOk() const noexcept   { return result == Steinberg::kResultOk; }
+
+    Steinberg::tresult extract (void** obj) const
+    {
+        *obj = result == Steinberg::kResultOk ? ptr : nullptr;
+        return result;
+    }
+
+private:
+    Steinberg::tresult result = Steinberg::kResultFalse;
+    void* ptr = nullptr;
+};
+
+/*  Holds a tresult and a pointer to an object.
+
+    Calling InterfaceResultWithDeferredAddRef::extract() will also call addRef
+    on the pointed-to object. It is expected that users will use
+    InterfaceResultWithDeferredAddRef to hold intermediate results of a queryInterface
+    call. When a suitable interface is found, the function can be exited with
+    `return suitableInterface.extract (obj)`, which will set the obj pointer,
+    add a reference to the interface, and return the appropriate result code.
+*/
+class InterfaceResultWithDeferredAddRef
+{
+public:
+    InterfaceResultWithDeferredAddRef() = default;
+
+    template <typename Ptr>
+    InterfaceResultWithDeferredAddRef (Steinberg::tresult resultIn, Ptr* ptrIn)
+        : result (resultIn, ptrIn),
+          addRefFn (doAddRef<Ptr>) {}
+
+    bool isOk() const noexcept   { return result.isOk(); }
+
+    Steinberg::tresult extract (void** obj) const
+    {
+        const auto toReturn = result.extract (obj);
+
+        if (result.isOk() && *obj != nullptr && addRefFn != nullptr)
+            addRefFn (*obj);
+
+        return toReturn;
+    }
+
+private:
+    template <typename Ptr>
+    static void doAddRef (void* obj)   { static_cast<Ptr*> (obj)->addRef(); }
+
+    QueryInterfaceResult result;
+    void (*addRefFn) (void*) = nullptr;
+};
+
+template <typename ClassType>                                   struct UniqueBase {};
+template <typename CommonClassType, typename SourceClassType>   struct SharedBase {};
+
+template <typename ToTest, typename CommonClassType, typename SourceClassType>
+InterfaceResultWithDeferredAddRef testFor (ToTest& toTest,
+                                           const Steinberg::TUID targetIID,
+                                           SharedBase<CommonClassType, SourceClassType>)
+{
+    if (! doUIDsMatch (targetIID, CommonClassType::iid))
+        return {};
+
+    return { Steinberg::kResultOk, static_cast<CommonClassType*> (static_cast<SourceClassType*> (std::addressof (toTest))) };
+}
+
+template <typename ToTest, typename ClassType>
+InterfaceResultWithDeferredAddRef testFor (ToTest& toTest,
+                                           const Steinberg::TUID targetIID,
+                                           UniqueBase<ClassType>)
+{
+    return testFor (toTest, targetIID, SharedBase<ClassType, ClassType>{});
+}
+
+template <typename ToTest>
+InterfaceResultWithDeferredAddRef testForMultiple (ToTest&, const Steinberg::TUID) { return {}; }
+
+template <typename ToTest, typename Head, typename... Tail>
+InterfaceResultWithDeferredAddRef testForMultiple (ToTest& toTest, const Steinberg::TUID targetIID, Head head, Tail... tail)
+{
+    const auto result = testFor (toTest, targetIID, head);
+
+    if (result.isOk())
+        return result;
+
+    return testForMultiple (toTest, targetIID, tail...);
+}
+
+//==============================================================================
+// We have to trust that Steinberg won't double-delete
+// NOLINTBEGIN(clang-analyzer-cplusplus.NewDelete)
+template <class ObjectType>
+class VSTComSmartPtr
+{
+public:
+    VSTComSmartPtr() = default;
+
+    ~VSTComSmartPtr()
+    {
+        if (source != nullptr)
+            source->release();
+    }
+
+    VSTComSmartPtr (ObjectType* object, IncrementRef incrementRefCount) noexcept
+        : source (object)
+    {
+        if (source != nullptr && incrementRefCount == IncrementRef::yes)
+            source->addRef();
+    }
+
+    VSTComSmartPtr (const VSTComSmartPtr& other) noexcept
+        : VSTComSmartPtr (other.get(), IncrementRef::yes) {}
+
+    template <typename Other, std::enable_if_t<! std::is_same_v<Other, ObjectType>, int> = 0>
+    VSTComSmartPtr (const VSTComSmartPtr<Other>& other) noexcept
+        : VSTComSmartPtr (other.get(), true) {}
+
+    explicit operator bool() const noexcept           { return operator!= (nullptr); }
+    ObjectType* get() const noexcept                  { return source; }
+    ObjectType& operator*() const noexcept            { return *source; }
+    ObjectType* operator->() const noexcept           { return source; }
+
+    VSTComSmartPtr& operator= (const VSTComSmartPtr& other)
+    {
+        auto p = other;
+        std::swap (p.source, source);
+        return *this;
+    }
+
+    template <typename Other, std::enable_if_t<! std::is_same_v<Other, ObjectType>, int> = 0>
+    VSTComSmartPtr& operator= (const VSTComSmartPtr<Other>& other)
+    {
+        return operator= (VSTComSmartPtr { other });
+    }
+
+    VSTComSmartPtr& operator= (std::nullptr_t)
+    {
+        return operator= (VSTComSmartPtr{});
+    }
+
+    bool operator== (std::nullptr_t) const noexcept { return source == nullptr; }
+    bool operator!= (std::nullptr_t) const noexcept { return source != nullptr; }
+
+    bool loadFrom (Steinberg::FUnknown* o)
+    {
+        *this = nullptr;
+        return o != nullptr && o->queryInterface (ObjectType::iid, (void**) &source) == Steinberg::kResultOk;
+    }
+
+    bool loadFrom (Steinberg::IPluginFactory* factory, const Steinberg::TUID& uuid)
+    {
+        jassert (factory != nullptr);
+        *this = nullptr;
+        return factory->createInstance (uuid, ObjectType::iid, (void**) &source) == Steinberg::kResultOk;
+    }
+
+private:
+    ObjectType* source = nullptr;
+};
+
+// NOLINTEND(clang-analyzer-cplusplus.NewDelete)
+
+HIGGS_END_NO_SANITIZE
+
+} // namespace higgs
+/** @endcond */
