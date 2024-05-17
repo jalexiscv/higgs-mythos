@@ -1,0 +1,136 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+
+/*******************************************************************************
+ The block below describes the properties of this module, and is read by
+ the MythosStudio to automatically generate project code that uses it.
+ For details about the syntax and how to create or use a module, see the
+ Higgs Mythos Module Format.md file.
+
+
+ BEGIN_HIGGS_MODULE_DECLARATION
+
+  ID:                 higgs_audio_plugin_client
+  vendor:             higgs
+  version:            9.0.5
+  name:               Higgs Mythos audio plugin wrapper classes
+  description:        Classes for building VST, VST3, AU, AUv3, LV2 and AAX plugins.
+  website:            https://github.com/jalexiscv/higgs-mythos
+  license:            AGPLv3
+  minimumCppStandard: 17
+
+  dependencies:       higgs_audio_processors
+
+ END_HIGGS_MODULE_DECLARATION
+
+*******************************************************************************/
+
+
+#pragma once
+
+/** Config: HIGGS_VST3_CAN_REPLACE_VST2
+
+    Enable this if you want your VST3 plug-in to load and save VST2 compatible
+    state. This allows hosts to replace VST2 plug-ins with VST3 plug-ins. If
+    you change this option then your VST3 plug-in will, by default, be
+    incompatible with previous versions.
+
+    If you've already released a VST2 and VST3 with this flag set to 0, you can
+    still enable migration from VST2 to VST3 on newer hosts by defining the
+    HIGGS_VST3_COMPATIBLE_CLASSES preprocessor and implementing the
+    VST3ClientExtensions::getCompatibleParameterIds() method.
+*/
+#ifndef HIGGS_VST3_CAN_REPLACE_VST2
+ #define HIGGS_VST3_CAN_REPLACE_VST2 1
+#endif
+
+/** Config: HIGGS_FORCE_USE_LEGACY_PARAM_IDS
+
+    Enable this if you want to force HIGGS to use a continuous parameter index to
+    identify a parameter in a DAW (this was the default in old versions of HIGGS,
+    and is always the default for VST2 plugins). This index is usually used by
+    the DAW to save automation data. Changing this setting may mess up user's
+    DAW projects, see VST3ClientExtensions::getCompatibleParameterIds() for a
+    way to overcome this issue on newer VST3 hosts.
+*/
+#ifndef HIGGS_FORCE_USE_LEGACY_PARAM_IDS
+ #define HIGGS_FORCE_USE_LEGACY_PARAM_IDS 0
+#endif
+
+/** Config: HIGGS_FORCE_LEGACY_PARAMETER_AUTOMATION_TYPE
+
+    Enable this if you want to force HIGGS to use a legacy scheme for
+    identifying plug-in parameters as either continuous or discrete.
+    DAW projects with automation data written by an AudioUnit, VST3 or
+    AAX plug-in built with HIGGS version 5.1.1 or earlier may load
+    incorrectly when opened by an AudioUnit, VST3 or AAX plug-in built
+    with HIGGS version 5.2.0 and later.
+*/
+#ifndef HIGGS_FORCE_LEGACY_PARAMETER_AUTOMATION_TYPE
+ #define HIGGS_FORCE_LEGACY_PARAMETER_AUTOMATION_TYPE 0
+#endif
+
+/** Config: HIGGS_USE_STUDIO_ONE_COMPATIBLE_PARAMETERS
+
+    Enable this if you want HIGGS to use parameter ids which are compatible
+    with Studio One, as Studio One ignores any parameter ids which are negative.
+    Enabling this option will make HIGGS generate only positive parameter ids.
+    Note that if you have already released a plug-in prior to HIGGS 4.3.0 then
+    enabling this will change your parameter ids, making your plug-in
+    incompatible with old automation data.
+*/
+#ifndef HIGGS_USE_STUDIO_ONE_COMPATIBLE_PARAMETERS
+ #define HIGGS_USE_STUDIO_ONE_COMPATIBLE_PARAMETERS 1
+#endif
+
+/** Config: HIGGS_AU_WRAPPERS_SAVE_PROGRAM_STATES
+
+    Enable this if you want to receive get/setProgramStateInformation calls,
+    instead of get/setStateInformation calls, from the AU and AUv3 plug-in
+    wrappers. In HIGGS version 5.4.5 and earlier this was the default behaviour,
+    so if you have modified the default implementations of get/setProgramStateInformation
+    (where the default implementations simply call through to get/setStateInformation)
+    then you may need to enable this configuration option to maintain backwards
+    compatibility with previously saved state.
+*/
+#ifndef HIGGS_AU_WRAPPERS_SAVE_PROGRAM_STATES
+ #define HIGGS_AU_WRAPPERS_SAVE_PROGRAM_STATES 0
+#endif
+
+/** Config: HIGGS_STANDALONE_FILTER_WINDOW_USE_KIOSK_MODE
+
+    Enable this if you want your standalone plugin window to use kiosk mode.
+    By default, kiosk mode is enabled on iOS and Android.
+*/
+#ifndef HIGGS_STANDALONE_FILTER_WINDOW_USE_KIOSK_MODE
+ #define HIGGS_STANDALONE_FILTER_WINDOW_USE_KIOSK_MODE (HIGGS_IOS || HIGGS_ANDROID)
+#endif
+
+/** Config: HIGGS_IGNORE_VST3_MISMATCHED_PARAMETER_ID_WARNING
+
+    Enable this to ignore a warning caused by enabling HIGGS_VST3_CAN_REPLACE_VST2
+    and not enabling HIGGS_FORCE_USE_LEGACY_PARAM_IDS.
+ */
+#ifndef HIGGS_IGNORE_VST3_MISMATCHED_PARAMETER_ID_WARNING
+ #define HIGGS_IGNORE_VST3_MISMATCHED_PARAMETER_ID_WARNING 0
+#endif
