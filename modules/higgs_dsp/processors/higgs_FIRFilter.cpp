@@ -1,0 +1,155 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs::dsp
+{
+
+template <typename NumericType>
+double FIR::Coefficients<NumericType>::Coefficients::getMagnitudeForFrequency (double frequency, double theSampleRate) const noexcept
+{
+    jassert (theSampleRate > 0.0);
+    jassert (frequency >= 0.0 && frequency <= theSampleRate * 0.5);
+
+    constexpr Complex<double> j (0, 1);
+    auto order = getFilterOrder();
+
+    Complex<double> numerator = 0.0, factor = 1.0;
+    Complex<double> jw = std::exp (-MathConstants<double>::twoPi * frequency * j / theSampleRate);
+
+    const auto* coefs = coefficients.begin();
+
+    for (size_t n = 0; n <= order; ++n)
+    {
+        numerator += static_cast<double> (coefs[n]) * factor;
+        factor *= jw;
+    }
+
+    return std::abs (numerator);
+}
+
+//==============================================================================
+template <typename NumericType>
+void FIR::Coefficients<NumericType>::Coefficients::getMagnitudeForFrequencyArray (double* frequencies, double* magnitudes,
+                                                                        size_t numSamples, double theSampleRate) const noexcept
+{
+    jassert (theSampleRate > 0.0);
+
+    constexpr Complex<double> j (0, 1);
+    const auto* coefs = coefficients.begin();
+    auto order = getFilterOrder();
+
+    for (size_t i = 0; i < numSamples; ++i)
+    {
+        jassert (frequencies[i] >= 0.0 && frequencies[i] <= theSampleRate * 0.5);
+
+        Complex<double> numerator = 0.0;
+        Complex<double> factor = 1.0;
+        Complex<double> jw = std::exp (-MathConstants<double>::twoPi * frequencies[i] * j / theSampleRate);
+
+        for (size_t n = 0; n <= order; ++n)
+        {
+            numerator += static_cast<double> (coefs[n]) * factor;
+            factor *= jw;
+        }
+
+        magnitudes[i] = std::abs (numerator);
+    }
+}
+
+//==============================================================================
+template <typename NumericType>
+double FIR::Coefficients<NumericType>::Coefficients::getPhaseForFrequency (double frequency, double theSampleRate) const noexcept
+{
+    jassert (theSampleRate > 0.0);
+    jassert (frequency >= 0.0 && frequency <= theSampleRate * 0.5);
+
+    constexpr Complex<double> j (0, 1);
+
+    Complex<double> numerator = 0.0;
+    Complex<double> factor = 1.0;
+    Complex<double> jw = std::exp (-MathConstants<double>::twoPi * frequency * j / theSampleRate);
+
+    const auto* coefs = coefficients.begin();
+    auto order = getFilterOrder();
+
+    for (size_t n = 0; n <= order; ++n)
+    {
+        numerator += static_cast<double> (coefs[n]) * factor;
+        factor *= jw;
+    }
+
+    return std::arg (numerator);
+}
+
+//==============================================================================
+template <typename NumericType>
+void FIR::Coefficients<NumericType>::Coefficients::getPhaseForFrequencyArray (double* frequencies, double* phases,
+                                                                    size_t numSamples, double theSampleRate) const noexcept
+{
+    jassert (theSampleRate > 0.0);
+
+    constexpr Complex<double> j (0, 1);
+    const auto* coefs = coefficients.begin();
+    auto order = getFilterOrder();
+
+    for (size_t i = 0; i < numSamples; ++i)
+    {
+        jassert (frequencies[i] >= 0.0 && frequencies[i] <= theSampleRate * 0.5);
+
+        Complex<double> numerator = 0.0, factor = 1.0;
+        Complex<double> jw = std::exp (-MathConstants<double>::twoPi * frequencies[i] * j / theSampleRate);
+
+        for (size_t n = 0; n <= order; ++n)
+        {
+            numerator += static_cast<double> (coefs[n]) * factor;
+            factor *= jw;
+        }
+
+        phases[i] = std::arg (numerator);
+    }
+}
+
+//==============================================================================
+template <typename NumericType>
+void FIR::Coefficients<NumericType>::Coefficients::normalise() noexcept
+{
+    auto magnitude = static_cast<NumericType> (0);
+
+    auto* coefs = coefficients.getRawDataPointer();
+    auto n = static_cast<size_t> (coefficients.size());
+
+    for (size_t i = 0; i < n; ++i)
+    {
+        auto c = coefs[i];
+        magnitude += c * c;
+    }
+
+    auto magnitudeInv = 1 / (4 * std::sqrt (magnitude));
+
+    FloatVectorOperations::multiply (coefs, magnitudeInv, static_cast<int> (n));
+}
+
+//==============================================================================
+template struct FIR::Coefficients<float>;
+template struct FIR::Coefficients<double>;
+
+} // namespace higgs::dsp
