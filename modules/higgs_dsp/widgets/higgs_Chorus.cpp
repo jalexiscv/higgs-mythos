@@ -1,0 +1,135 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs::dsp
+{
+
+//==============================================================================
+template <typename SampleType>
+Chorus<SampleType>::Chorus()
+{
+    auto oscFunction = [] (SampleType x) { return std::sin (x); };
+    osc.initialise (oscFunction);
+
+    dryWet.setMixingRule (DryWetMixingRule::linear);
+}
+
+template <typename SampleType>
+void Chorus<SampleType>::setRate (SampleType newRateHz)
+{
+    jassert (isPositiveAndBelow (newRateHz, static_cast<SampleType> (100.0)));
+
+    rate = newRateHz;
+    update();
+}
+
+template <typename SampleType>
+void Chorus<SampleType>::setDepth (SampleType newDepth)
+{
+    jassert (isPositiveAndNotGreaterThan (newDepth, maxDepth));
+
+    depth = newDepth;
+    update();
+}
+
+template <typename SampleType>
+void Chorus<SampleType>::setCentreDelay (SampleType newDelayMs)
+{
+    jassert (isPositiveAndBelow (newDelayMs, maxCentreDelayMs));
+
+    centreDelay = jlimit (static_cast<SampleType> (1.0), maxCentreDelayMs, newDelayMs);
+}
+
+template <typename SampleType>
+void Chorus<SampleType>::setFeedback (SampleType newFeedback)
+{
+    jassert (newFeedback >= static_cast<SampleType> (-1.0) && newFeedback <= static_cast<SampleType> (1.0));
+
+    feedback = newFeedback;
+    update();
+}
+
+template <typename SampleType>
+void Chorus<SampleType>::setMix (SampleType newMix)
+{
+    jassert (isPositiveAndNotGreaterThan (newMix, static_cast<SampleType> (1.0)));
+
+    mix = newMix;
+    update();
+}
+
+//==============================================================================
+template <typename SampleType>
+void Chorus<SampleType>::prepare (const ProcessSpec& spec)
+{
+    jassert (spec.sampleRate > 0);
+    jassert (spec.numChannels > 0);
+
+    sampleRate = spec.sampleRate;
+
+    const auto maxPossibleDelay = std::ceil ((maximumDelayModulation * maxDepth * oscVolumeMultiplier + maxCentreDelayMs)
+                                             * sampleRate / 1000.0);
+    delay = DelayLine<SampleType, DelayLineInterpolationTypes::Linear>{ static_cast<int> (maxPossibleDelay) };
+    delay.prepare (spec);
+
+    dryWet.prepare (spec);
+    feedbackVolume.resize (spec.numChannels);
+    lastOutput.resize (spec.numChannels);
+
+    osc.prepare (spec);
+    bufferDelayTimes.setSize (1, (int) spec.maximumBlockSize, false, false, true);
+
+    update();
+    reset();
+}
+
+template <typename SampleType>
+void Chorus<SampleType>::reset()
+{
+    std::fill (lastOutput.begin(), lastOutput.end(), static_cast<SampleType> (0));
+
+    delay.reset();
+    osc.reset();
+    dryWet.reset();
+
+    oscVolume.reset (sampleRate, 0.05);
+
+    for (auto& vol : feedbackVolume)
+        vol.reset (sampleRate, 0.05);
+}
+
+template <typename SampleType>
+void Chorus<SampleType>::update()
+{
+    osc.setFrequency (rate);
+    oscVolume.setTargetValue (depth * oscVolumeMultiplier);
+    dryWet.setWetMixProportion (mix);
+
+    for (auto& vol : feedbackVolume)
+        vol.setTargetValue (feedback);
+}
+
+//==============================================================================
+template class Chorus<float>;
+template class Chorus<double>;
+
+} // namespace higgs::dsp
