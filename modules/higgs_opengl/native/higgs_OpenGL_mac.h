@@ -1,0 +1,364 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+namespace higgs
+{
+
+HIGGS_BEGIN_IGNORE_DEPRECATION_WARNINGS
+
+bool OpenGLHelpers::isOpenGLES()
+{
+    return false;
+}
+
+class OpenGLContext::NativeContext
+{
+public:
+    NativeContext (Component& component,
+                   const OpenGLPixelFormat& pixFormat,
+                   void* contextToShare,
+                   bool shouldUseMultisampling,
+                   [[maybe_unused]] API apiIn,
+                   Version versionIn,
+                   Profile profileIn)
+        : owner (component)
+    {
+        // OpenGL ES is not supported on macOS
+        jassert (apiIn == API::openGL);
+
+        const auto attribs = createAttribs (versionIn,
+                                            profileIn,
+                                            pixFormat,
+                                            shouldUseMultisampling);
+
+        NSOpenGLPixelFormat* format = [[NSOpenGLPixelFormat alloc] initWithAttributes: attribs.data()];
+
+        static MouseForwardingNSOpenGLViewClass cls;
+        view = [cls.createInstance() initWithFrame: NSMakeRect (0, 0, 100.0f, 100.0f)
+                                       pixelFormat: format];
+
+        if ([view respondsToSelector: @selector (setWantsBestResolutionOpenGLSurface:)])
+            [view setWantsBestResolutionOpenGLSurface: YES];
+
+        HIGGS_BEGIN_IGNORE_WARNINGS_GCC_LIKE ("-Wundeclared-selector")
+        [[NSNotificationCenter defaultCenter] addObserver: view
+                                                 selector: @selector (_surfaceNeedsUpdate:)
+                                                     name: NSViewGlobalFrameDidChangeNotification
+                                                   object: view];
+        HIGGS_END_IGNORE_WARNINGS_GCC_LIKE
+
+        renderContext = [[[NSOpenGLContext alloc] initWithFormat: format
+                                                    shareContext: (NSOpenGLContext*) contextToShare] autorelease];
+
+        [view setOpenGLContext: renderContext];
+        [format release];
+
+        viewAttachment = NSViewComponent::attachViewToComponent (component, view);
+    }
+
+    ~NativeContext()
+    {
+        [[NSNotificationCenter defaultCenter] removeObserver: view];
+        [renderContext clearDrawable];
+        [renderContext setView: nil];
+        [view setOpenGLContext: nil];
+        [view release];
+    }
+
+    static std::vector<NSOpenGLPixelFormatAttribute> createAttribs (Version version,
+                                                                    Profile profile,
+                                                                    const OpenGLPixelFormat& pixFormat,
+                                                                    bool shouldUseMultisampling)
+    {
+        const auto versionEnum = std::invoke ([&]
+        {
+            if (version == Version { 3, 2 })
+            {
+                // Only the core profile is supported for OpenGL 3.2
+                jassert (profile == Profile::core);
+                return NSOpenGLProfileVersion3_2Core;
+            }
+
+            if (version != Version{} && profile != Profile::compatibility)
+            {
+                return NSOpenGLProfileVersion4_1Core;
+            }
+
+            // Using the default legacy compatibility context, even though the core profile
+            // was requested.
+            jassert (profile == Profile::compatibility);
+            return NSOpenGLProfileVersionLegacy;
+        });
+
+        std::vector<NSOpenGLPixelFormatAttribute> attribs
+        {
+            NSOpenGLPFAOpenGLProfile, versionEnum,
+            NSOpenGLPFADoubleBuffer,
+            NSOpenGLPFAClosestPolicy,
+            NSOpenGLPFANoRecovery,
+            NSOpenGLPFAColorSize,   static_cast<NSOpenGLPixelFormatAttribute> (pixFormat.redBits + pixFormat.greenBits + pixFormat.blueBits),
+            NSOpenGLPFAAlphaSize,   static_cast<NSOpenGLPixelFormatAttribute> (pixFormat.alphaBits),
+            NSOpenGLPFADepthSize,   static_cast<NSOpenGLPixelFormatAttribute> (pixFormat.depthBufferBits),
+            NSOpenGLPFAStencilSize, static_cast<NSOpenGLPixelFormatAttribute> (pixFormat.stencilBufferBits),
+            NSOpenGLPFAAccumSize,   static_cast<NSOpenGLPixelFormatAttribute> (pixFormat.accumulationBufferRedBits  + pixFormat.accumulationBufferGreenBits
+                                                                             + pixFormat.accumulationBufferBlueBits + pixFormat.accumulationBufferAlphaBits)
+        };
+
+        if (shouldUseMultisampling)
+        {
+            attribs.insert (attribs.cend(),
+            {
+                NSOpenGLPFAMultisample,
+                NSOpenGLPFASampleBuffers,   static_cast<NSOpenGLPixelFormatAttribute> (1),
+                NSOpenGLPFASamples,         static_cast<NSOpenGLPixelFormatAttribute> (pixFormat.multisamplingLevel)
+            });
+        }
+
+        attribs.push_back (0);
+
+        return attribs;
+    }
+
+    InitResult initialiseOnRenderThread (OpenGLContext&)  { return InitResult::success; }
+    void shutdownOnRenderThread()                         { deactivateCurrentContext(); }
+
+    bool createdOk() const noexcept                   { return getRawContext() != nullptr; }
+    NSOpenGLView* getNSView() const noexcept          { return view; }
+    NSOpenGLContext* getRawContext() const noexcept   { return renderContext; }
+    GLuint getFrameBufferID() const noexcept          { return 0; }
+
+    bool makeActive() const noexcept
+    {
+        jassert (renderContext != nil);
+
+        if ([renderContext view] != view)
+            [renderContext setView: view];
+
+        if (NSOpenGLContext* context = [view openGLContext])
+        {
+            [context makeCurrentContext];
+            return true;
+        }
+
+        return false;
+    }
+
+    bool isActive() const noexcept
+    {
+        return [NSOpenGLContext currentContext] == renderContext;
+    }
+
+    static void deactivateCurrentContext()
+    {
+        [NSOpenGLContext clearCurrentContext];
+    }
+
+    struct Locker
+    {
+        Locker (NativeContext& nc) : cglContext ((CGLContextObj) [nc.renderContext CGLContextObj])
+        {
+            CGLLockContext (cglContext);
+        }
+
+        ~Locker()
+        {
+            CGLUnlockContext (cglContext);
+        }
+
+    private:
+        CGLContextObj cglContext;
+    };
+
+    void swapBuffers()
+    {
+        auto now = Time::getMillisecondCounterHiRes();
+        [renderContext flushBuffer];
+
+        if (const auto minSwapTime = minSwapTimeMs.get(); minSwapTime > 0)
+        {
+            // When our window is entirely occluded by other windows, flushBuffer
+            // fails to wait for the swap interval, so the render loop spins at full
+            // speed, burning CPU. This hack detects when things are going too fast
+            // and sleeps if necessary.
+
+            auto swapTime = Time::getMillisecondCounterHiRes() - now;
+            auto frameTime = (int) std::min ((uint64_t) std::numeric_limits<int>::max(),
+                                             (uint64_t) now - (uint64_t) lastSwapTime);
+
+            if (swapTime < 0.5 && frameTime < minSwapTime - 3)
+            {
+                if (underrunCounter > 3)
+                {
+                    Thread::sleep (2 * (minSwapTime - frameTime));
+                    now = Time::getMillisecondCounterHiRes();
+                }
+                else
+                {
+                    ++underrunCounter;
+                }
+            }
+            else
+            {
+                if (underrunCounter > 0)
+                    --underrunCounter;
+            }
+        }
+
+        lastSwapTime = now;
+    }
+
+    void updateWindowPosition()
+    {
+        if (auto* peer = owner.getTopLevelComponent()->getPeer())
+        {
+            const auto newArea = peer->getAreaCoveredBy (owner);
+
+            if (convertToRectInt ([view frame]) != newArea)
+                [view setFrame: makeCGRect (newArea)];
+        }
+    }
+
+    bool setSwapInterval (int numFramesPerSwapIn)
+    {
+        // The macOS OpenGL programming guide says that numFramesPerSwap
+        // can only be 0 or 1.
+        jassert (isPositiveAndBelow (numFramesPerSwapIn, 2));
+
+        [renderContext setValues: (const GLint*) &numFramesPerSwapIn
+                    forParameter: getSwapIntervalParameter()];
+
+        minSwapTimeMs.setFramesPerSwap (numFramesPerSwapIn);
+
+        return true;
+    }
+
+    int getSwapInterval() const
+    {
+        GLint numFrames = 0;
+        [renderContext getValues: &numFrames
+                    forParameter: getSwapIntervalParameter()];
+
+        return numFrames;
+    }
+
+    void setNominalVideoRefreshPeriodS (double periodS)
+    {
+        jassert (periodS > 0.0);
+        minSwapTimeMs.setVideoRefreshPeriodS (periodS);
+    }
+
+    static NSOpenGLContextParameter getSwapIntervalParameter()
+    {
+        if (@available (macOS 10.12, *))
+            return NSOpenGLContextParameterSwapInterval;
+
+        return NSOpenGLCPSwapInterval;
+    }
+
+    class MinSwapTimeMs
+    {
+    public:
+        int get() const
+        {
+            return minSwapTimeMs;
+        }
+
+        void setFramesPerSwap (int n)
+        {
+            const std::scoped_lock lock { mutex };
+            numFramesPerSwap = n;
+            updateMinSwapTime();
+        }
+
+        void setVideoRefreshPeriodS (double n)
+        {
+            const std::scoped_lock lock { mutex };
+            videoRefreshPeriodS = n;
+            updateMinSwapTime();
+        }
+
+    private:
+        void updateMinSwapTime()
+        {
+            minSwapTimeMs = static_cast<int> (numFramesPerSwap * 1000 * videoRefreshPeriodS);
+        }
+
+        std::mutex mutex;
+        std::atomic<int> minSwapTimeMs { 0 };
+        int numFramesPerSwap = 0;
+        double videoRefreshPeriodS = 1.0 / 60.0;
+    };
+
+    Component& owner;
+    NSOpenGLContext* renderContext = nil;
+    NSOpenGLView* view = nil;
+    ReferenceCountedObjectPtr<ReferenceCountedObject> viewAttachment;
+    double lastSwapTime = 0;
+    int underrunCounter = 0;
+    MinSwapTimeMs minSwapTimeMs;
+
+    //==============================================================================
+    struct MouseForwardingNSOpenGLViewClass  : public ObjCClass<NSOpenGLView>
+    {
+        MouseForwardingNSOpenGLViewClass()  : ObjCClass ("HIGGSGLView_")
+        {
+            addMethod (@selector (rightMouseDown:), [] (id self, SEL, NSEvent* ev)
+            {
+                [[(NSOpenGLView*) self superview] rightMouseDown: ev];
+            });
+
+            addMethod (@selector (rightMouseUp:), [] (id self, SEL, NSEvent* ev)
+            {
+                [[(NSOpenGLView*) self superview] rightMouseUp:   ev];
+            });
+
+            addMethod (@selector (acceptsFirstMouse:), [] (id, SEL, NSEvent*) -> BOOL
+            {
+                return YES;
+            });
+
+            addMethod (@selector (accessibilityHitTest:), [] (id self, SEL, NSPoint p) -> id
+            {
+                return [[(NSOpenGLView*) self superview] accessibilityHitTest: p];
+            });
+
+            addMethod (@selector (hitTest:), [] (id, SEL, NSPoint) -> NSView*
+            {
+                return nil;
+            });
+
+            registerClass();
+        }
+    };
+
+    HIGGS_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (NativeContext)
+};
+
+//==============================================================================
+bool OpenGLHelpers::isContextActive()
+{
+    return CGLGetCurrentContext() != CGLContextObj();
+}
+
+HIGGS_END_IGNORE_DEPRECATION_WARNINGS
+
+} // namespace higgs
