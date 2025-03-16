@@ -1,0 +1,96 @@
+# ==============================================================================
+#
+#  This file is part of the Higgs Mythos framework.
+#  Copyright (c) Raw Material Software Limited
+#
+#  Higgs Mythos is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Affero General Public License as published
+#  by the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  Higgs Mythos is distributed in the hope that it will be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#  GNU Affero General Public License for more details.
+#
+#  You should have received a copy of the GNU Affero General Public License
+#  along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+#
+# ==============================================================================
+
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/LV2_HELPER.cmake")
+
+if(NOT TARGET higgs::higgsaide)
+    add_executable(higgs::higgsaide IMPORTED)
+    set_target_properties(higgs::higgsaide PROPERTIES
+        IMPORTED_LOCATION "@PACKAGE_HIGGSAIDE_PATH@")
+endif()
+
+check_required_components("@PROJECT_NAME@")
+
+set(HIGGS_MODULES_DIR "@PACKAGE_HIGGS_MODULE_PATH@" CACHE INTERNAL
+    "The path to HIGGS modules")
+
+include("@PACKAGE_UTILS_INSTALL_DIR@/HIGGSModuleSupport.cmake")
+include("@PACKAGE_UTILS_INSTALL_DIR@/HIGGSUtils.cmake")
+
+set(_higgs_modules
+    higgs_analytics
+    higgs_animation
+    higgs_audio_basics
+    higgs_audio_devices
+    higgs_audio_formats
+    higgs_audio_plugin_client
+    higgs_audio_processors
+    higgs_audio_processors_headless
+    higgs_audio_utils
+    higgs_box2d
+    higgs_core
+    higgs_cryptography
+    higgs_data_structures
+    higgs_dsp
+    higgs_events
+    higgs_graphics
+    higgs_gui_basics
+    higgs_gui_extra
+    higgs_javascript
+    higgs_midi_ci
+    higgs_opengl
+    higgs_osc
+    higgs_product_unlocking
+    higgs_video)
+
+set(_targets_defined)
+set(_targets_expected)
+
+foreach(_higgs_module IN LISTS _higgs_modules)
+    list(APPEND _targets_expected ${_higgs_module} higgs::${_higgs_modules})
+    if(TARGET ${_higgs_module})
+        list(APPEND _targets_defined ${_higgs_module})
+    endif()
+
+    if(TARGET higgs::${_higgs_module})
+        list(APPEND _targets_defined higgs::${_higgs_module})
+    endif()
+endforeach()
+
+if("${_targets_defined}" STREQUAL "${_targets_expected}")
+    unset(_targets_defined)
+    unset(_targets_expected)
+    return()
+endif()
+
+if(NOT "${_targets_defined}" STREQUAL "")
+    message(FATAL_ERROR "Some targets in this export set were already defined.")
+endif()
+
+unset(_targets_defined)
+unset(_targets_expected)
+
+foreach(_higgs_module IN LISTS _higgs_modules)
+    higgs_add_module("@PACKAGE_HIGGS_MODULE_PATH@/${_higgs_module}" ALIAS_NAMESPACE higgs)
+endforeach()
+
+unset(_higgs_modules)

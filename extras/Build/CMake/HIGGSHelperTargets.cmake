@@ -1,0 +1,154 @@
+# ==============================================================================
+#
+#  This file is part of the Higgs Mythos framework.
+#  Copyright (c) Raw Material Software Limited
+#
+#  Higgs Mythos is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Affero General Public License as published
+#  by the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  Higgs Mythos is distributed in the hope that it will be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#  GNU Affero General Public License for more details.
+#
+#  You should have received a copy of the GNU Affero General Public License
+#  along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+#
+# ==============================================================================
+
+add_library(higgs_recommended_warning_flags INTERFACE)
+add_library(higgs::higgs_recommended_warning_flags ALIAS higgs_recommended_warning_flags)
+
+function(_higgs_get_debug_config_genex result)
+    get_property(debug_configs GLOBAL PROPERTY DEBUG_CONFIGURATIONS)
+    if(NOT debug_configs)
+        set(debug_configs Debug)
+    endif()
+    list(TRANSFORM debug_configs REPLACE [[^.+$]] [[$<CONFIG:\0>]])
+    list(JOIN debug_configs "," debug_configs)
+    # $<CONFIG> doesn't accept multiple configurations until CMake 3.19
+    set(${result} "$<OR:${debug_configs}>" PARENT_SCOPE)
+endfunction()
+
+# ==================================================================================================
+
+if((CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") OR (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC"))
+    target_compile_options(higgs_recommended_warning_flags INTERFACE "/W4")
+elseif((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") OR (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"))
+    target_compile_options(higgs_recommended_warning_flags INTERFACE
+        -Wall
+        -Wshadow-all
+        -Wshorten-64-to-32
+        -Wstrict-aliasing
+        -Wuninitialized
+        -Wunused-parameter
+        -Wconversion
+        -Wsign-compare
+        -Wint-conversion
+        -Wconditional-uninitialized
+        -Wconstant-conversion
+        -Wsign-conversion
+        -Wbool-conversion
+        -Wextra-semi
+        -Wunreachable-code
+        -Wcast-align
+        -Wshift-sign-overflow
+        -Wmissing-prototypes
+        -Wnullable-to-nonnull-conversion
+        -Wno-ignored-qualifiers
+        -Wswitch-enum
+        -Wpedantic
+        -Wdeprecated
+        -Wfloat-equal
+        -Wmissing-field-initializers
+        $<$<OR:$<COMPILE_LANGUAGE:CXX>,$<COMPILE_LANGUAGE:OBJCXX>>:
+            -Wzero-as-null-pointer-constant
+            -Wunused-private-field
+            -Woverloaded-virtual
+            -Wreorder
+            -Winconsistent-missing-destructor-override>
+        $<$<OR:$<COMPILE_LANGUAGE:OBJC>,$<COMPILE_LANGUAGE:OBJCXX>>:
+            -Wunguarded-availability
+            -Wunguarded-availability-new>)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(higgs_recommended_warning_flags INTERFACE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wstrict-aliasing
+        -Wuninitialized
+        -Wunused-parameter
+        -Wsign-compare
+        -Wsign-conversion
+        -Wunreachable-code
+        -Wcast-align
+        -Wno-implicit-fallthrough
+        -Wno-maybe-uninitialized
+        -Wno-ignored-qualifiers
+        -Wno-multichar
+        -Wswitch-enum
+        -Wredundant-decls
+        -Wno-strict-overflow
+        -Wshadow
+        -Wfloat-equal
+        -Wmissing-field-initializers
+        $<$<COMPILE_LANGUAGE:CXX>:
+            -Woverloaded-virtual
+            -Wreorder
+            -Wzero-as-null-pointer-constant>)
+endif()
+
+# ==================================================================================================
+
+add_library(higgs_recommended_config_flags INTERFACE)
+add_library(higgs::higgs_recommended_config_flags ALIAS higgs_recommended_config_flags)
+
+if((CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") OR (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC"))
+    _higgs_get_debug_config_genex(debug_config)
+    target_compile_options(higgs_recommended_config_flags INTERFACE
+        $<IF:${debug_config},/Od,/Ox> $<$<STREQUAL:"${CMAKE_CXX_COMPILER_ID}","MSVC">:/MP> /EHsc)
+
+    set(needs_debug_flag TRUE)
+
+    if(POLICY CMP0141)
+        set(policy_state)
+        cmake_policy(GET CMP0141 policy_state)
+
+        if("${policy_state}" STREQUAL "NEW")
+            set(needs_debug_flag FALSE)
+        endif()
+    endif()
+
+    if(needs_debug_flag)
+        target_compile_options(higgs_recommended_config_flags INTERFACE $<${debug_config}:/Zi>)
+    endif()
+elseif((CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+       OR (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+       OR (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+    _higgs_get_debug_config_genex(debug_config)
+    target_compile_options(higgs_recommended_config_flags INTERFACE
+        $<${debug_config}:-g -O0>
+        $<$<CONFIG:Release>:-O3>)
+endif()
+
+# ==================================================================================================
+
+add_library(higgs_recommended_lto_flags INTERFACE)
+add_library(higgs::higgs_recommended_lto_flags ALIAS higgs_recommended_lto_flags)
+
+if((CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") OR (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC"))
+    target_compile_options(higgs_recommended_lto_flags INTERFACE
+        $<$<CONFIG:Release>:$<IF:$<STREQUAL:"${CMAKE_CXX_COMPILER_ID}","MSVC">,-GL,-flto>>)
+    target_link_libraries(higgs_recommended_lto_flags INTERFACE
+        $<$<CONFIG:Release>:$<$<STREQUAL:"${CMAKE_CXX_COMPILER_ID}","MSVC">:-LTCG>>)
+elseif((CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+       OR (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+       OR (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+    target_compile_options(higgs_recommended_lto_flags INTERFACE $<$<CONFIG:Release>:-flto>)
+    target_link_libraries(higgs_recommended_lto_flags INTERFACE $<$<CONFIG:Release>:-flto>)
+    # Xcode 15.0 requires this flag to avoid a compiler bug
+    target_link_libraries(higgs_recommended_lto_flags INTERFACE
+        $<$<CONFIG:Release>:$<$<STREQUAL:"${CMAKE_CXX_COMPILER_ID}","AppleClang">:-Wl,-weak_reference_mismatches,weak>>)
+endif()
