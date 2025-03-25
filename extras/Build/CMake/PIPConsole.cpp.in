@@ -1,0 +1,10 @@
+/*
+  ==============================================================================
+
+    This file was auto-generated and contains the startup code for a PIP.
+
+  ==============================================================================
+*/
+
+#include <HiggsHeader.h>
+#include "${HIGGS_PIP_HEADER}"

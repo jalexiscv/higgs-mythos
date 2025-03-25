@@ -1,0 +1,5 @@
+#pragma once
+
+#ifndef HiggsPlugin_LV2URI
+ #define HiggsPlugin_LV2URI "${HIGGS_LV2URI}"
+#endif

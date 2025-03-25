@@ -1,0 +1,90 @@
+/*
+  ==============================================================================
+
+    This file contains the startup code for a PIP.
+
+  ==============================================================================
+*/
+
+#include <HiggsHeader.h>
+#include "${HIGGS_PIP_HEADER}"
+
+class Application    : public higgs::HIGGSApplication
+{
+public:
+    //==============================================================================
+    Application() = default;
+
+    const higgs::String getApplicationName() override       { return "${HIGGS_PIP_NAME}"; }
+    const higgs::String getApplicationVersion() override    { return "${PROJECT_VERSION}"; }
+
+    void initialise (const higgs::String&) override
+    {
+        mainWindow.reset (new MainWindow ("${HIGGS_PIP_NAME}", std::make_unique<${HIGGS_PIP_MAIN_CLASS}>(), *this));
+    }
+
+    void shutdown() override                         { mainWindow = nullptr; }
+
+private:
+    class MainWindow    : public higgs::DocumentWindow
+    {
+    public:
+        MainWindow (const higgs::String& name, std::unique_ptr<higgs::Component> c, HIGGSApplication& a)
+            : DocumentWindow (name, higgs::Desktop::getInstance().getDefaultLookAndFeel()
+                                                                .findColour (ResizableWindow::backgroundColourId),
+                              higgs::DocumentWindow::allButtons),
+              app (a)
+        {
+            setUsingNativeTitleBar (true);
+
+           #if HIGGS_ANDROID || HIGGS_IOS
+            setContentOwned (new SafeAreaComponent { std::move (c) }, true);
+            setFullScreen (true);
+           #else
+            setContentOwned (c.release(), true);
+            setResizable (true, false);
+            setResizeLimits (300, 250, 10000, 10000);
+            centreWithSize (getWidth(), getHeight());
+           #endif
+
+            setVisible (true);
+        }
+
+        void closeButtonPressed() override
+        {
+            app.systemRequestedQuit();
+        }
+
+       #if HIGGS_ANDROID || HIGGS_IOS
+        class SafeAreaComponent : public higgs::Component
+        {
+        public:
+            explicit SafeAreaComponent (std::unique_ptr<Component> c)
+                : content (std::move (c))
+            {
+                addAndMakeVisible (*content);
+            }
+
+            void resized() override
+            {
+                if (const auto* d = Desktop::getInstance().getDisplays().getDisplayForRect (getLocalBounds()))
+                    content->setBounds (d->safeAreaInsets.subtractedFrom (getLocalBounds()));
+            }
+
+        private:
+            std::unique_ptr<Component> content;
+        };
+       #endif
+
+    private:
+        HIGGSApplication& app;
+
+        //==============================================================================
+        HIGGS_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainWindow)
+    };
+
+    std::unique_ptr<MainWindow> mainWindow;
+};
+
+//==============================================================================
+START_HIGGS_APPLICATION (Application)
