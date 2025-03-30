@@ -1,0 +1,46 @@
+# ==============================================================================
+#
+#  This file is part of the Higgs Mythos framework.
+#  Copyright (c) Raw Material Software Limited
+#
+#  Higgs Mythos is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU Affero General Public License as published
+#  by the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  Higgs Mythos is distributed in the hope that it will be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#  GNU Affero General Public License for more details.
+#
+#  You should have received a copy of the GNU Affero General Public License
+#  along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+#
+# ==============================================================================
+
+cmake_minimum_required(VERSION 3.22)
+
+project(higgs_vst3_manifest_helper LANGUAGES CXX)
+
+add_executable(${helper_name} ${source_file})
+
+file(READ "${shared_defs_file}" shared_defs)
+file(READ "${shared_incs_file}" shared_incs)
+
+target_compile_definitions(${helper_name} PRIVATE ${shared_defs})
+target_include_directories(${helper_name} PRIVATE ${shared_incs})
+
+target_compile_features(${helper_name} PRIVATE cxx_std_17)
+
+set_target_properties(${helper_name} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+)
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+    target_link_libraries(${helper_name} PRIVATE stdc++fs)
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    target_link_libraries(${helper_name} PRIVATE "-framework Foundation")
+endif()
