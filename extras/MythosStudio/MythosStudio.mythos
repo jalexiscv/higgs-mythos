@@ -1,0 +1,486 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<MYTHOSPROJECT id="M70qfTRRk" name="MythosStudio" projectType="guiapp" higgsFolder="../../higgs"
+              version="9.0.5" bundleIdentifier="com.higgs.themythosstudio" companyName="Raw Material Software Limited"
+              companyCopyright="Raw Material Software Limited" useAppConfig="0"
+              addUsingNamespaceToHiggsHeader="1" mythosFormatVersion="1">
+  <EXPORTFORMATS>
+    <XCODE_MAC targetFolder="Builds/MacOSX" documentExtensions=".mythos" bigIcon="Zrx1Gl"
+               microphonePermissionNeeded="1" cameraPermissionNeeded="1" smallIcon="Zrx1Gl"
+               applicationCategory="public.app-category.developer-tools" extraLinkerFlags="-Wl,-weak_reference_mismatches,weak"
+               extraDefs="HIGGS_SILENCE_XCODE_15_LINKER_WARNING=1" iconComposerIcon="NzgaRC">
+      <CONFIGURATIONS>
+        <CONFIGURATION name="Debug" isDebug="1" targetName="MythosStudio" cppLibType="libc++"
+                       recommendedWarnings="LLVM"/>
+        <CONFIGURATION name="Release" isDebug="0" targetName="MythosStudio" cppLibType="libc++"
+                       linkTimeOptimisation="0" recommendedWarnings="LLVM"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="higgs_gui_extra" path="../../modules"/>
+        <MODULEPATH id="higgs_gui_basics" path="../../modules"/>
+        <MODULEPATH id="higgs_graphics" path="../../modules"/>
+        <MODULEPATH id="higgs_events" path="../../modules"/>
+        <MODULEPATH id="higgs_data_structures" path="../../modules"/>
+        <MODULEPATH id="higgs_cryptography" path="../../modules"/>
+        <MODULEPATH id="higgs_core" path="../../modules"/>
+        <MODULEPATH id="higgs_build_tools" path="../Build"/>
+      </MODULEPATHS>
+    </XCODE_MAC>
+    <VS2019 targetFolder="Builds/VisualStudio2019" bigIcon="Zrx1Gl" extraCompilerFlags="/w44265 /w45038 /w44062"
+            smallIcon="Zrx1Gl">
+      <CONFIGURATIONS>
+        <CONFIGURATION name="Debug" isDebug="1" targetName="MythosStudio" useRuntimeLibDLL="0"/>
+        <CONFIGURATION name="Release" isDebug="0" optimisation="3" targetName="MythosStudio"
+                       useRuntimeLibDLL="0" linkTimeOptimisation="0"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="higgs_gui_extra" path="../../modules"/>
+        <MODULEPATH id="higgs_gui_basics" path="../../modules"/>
+        <MODULEPATH id="higgs_graphics" path="../../modules"/>
+        <MODULEPATH id="higgs_events" path="../../modules"/>
+        <MODULEPATH id="higgs_data_structures" path="../../modules"/>
+        <MODULEPATH id="higgs_cryptography" path="../../modules"/>
+        <MODULEPATH id="higgs_core" path="../../modules"/>
+        <MODULEPATH id="higgs_build_tools" path="../Build"/>
+      </MODULEPATHS>
+    </VS2019>
+    <VS2022 targetFolder="Builds/VisualStudio2022" bigIcon="Zrx1Gl" extraCompilerFlags="/w44265 /w45038 /w44062"
+            smallIcon="Zrx1Gl">
+      <CONFIGURATIONS>
+        <CONFIGURATION name="Debug" isDebug="1" targetName="MythosStudio" useRuntimeLibDLL="0"/>
+        <CONFIGURATION name="Release" isDebug="0" optimisation="3" targetName="MythosStudio"
+                       useRuntimeLibDLL="0" linkTimeOptimisation="0"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="higgs_gui_extra" path="../../modules"/>
+        <MODULEPATH id="higgs_gui_basics" path="../../modules"/>
+        <MODULEPATH id="higgs_graphics" path="../../modules"/>
+        <MODULEPATH id="higgs_events" path="../../modules"/>
+        <MODULEPATH id="higgs_data_structures" path="../../modules"/>
+        <MODULEPATH id="higgs_cryptography" path="../../modules"/>
+        <MODULEPATH id="higgs_core" path="../../modules"/>
+        <MODULEPATH id="higgs_build_tools" path="../Build"/>
+      </MODULEPATHS>
+    </VS2022>
+    <VS2026 targetFolder="Builds/VisualStudio2026" bigIcon="Zrx1Gl" extraCompilerFlags="/w44265 /w45038 /w44062"
+            smallIcon="Zrx1Gl">
+      <CONFIGURATIONS>
+        <CONFIGURATION name="Debug" isDebug="1" targetName="MythosStudio" useRuntimeLibDLL="0"/>
+        <CONFIGURATION name="Release" isDebug="0" optimisation="3" targetName="MythosStudio"
+                       useRuntimeLibDLL="0" linkTimeOptimisation="0"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="higgs_gui_extra" path="../../modules"/>
+        <MODULEPATH id="higgs_gui_basics" path="../../modules"/>
+        <MODULEPATH id="higgs_graphics" path="../../modules"/>
+        <MODULEPATH id="higgs_events" path="../../modules"/>
+        <MODULEPATH id="higgs_data_structures" path="../../modules"/>
+        <MODULEPATH id="higgs_cryptography" path="../../modules"/>
+        <MODULEPATH id="higgs_core" path="../../modules"/>
+        <MODULEPATH id="higgs_build_tools" path="../Build"/>
+      </MODULEPATHS>
+    </VS2026>
+    <LINUX_MAKE targetFolder="Builds/LinuxMakefile" bigIcon="Zrx1Gl" smallIcon="Zrx1Gl">
+      <CONFIGURATIONS>
+        <CONFIGURATION name="Debug" isDebug="1" targetName="MythosStudio"/>
+        <CONFIGURATION name="Release" isDebug="0" targetName="MythosStudio"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="higgs_gui_extra" path="../../modules"/>
+        <MODULEPATH id="higgs_gui_basics" path="../../modules"/>
+        <MODULEPATH id="higgs_graphics" path="../../modules"/>
+        <MODULEPATH id="higgs_events" path="../../modules"/>
+        <MODULEPATH id="higgs_data_structures" path="../../modules"/>
+        <MODULEPATH id="higgs_cryptography" path="../../modules"/>
+        <MODULEPATH id="higgs_core" path="../../modules"/>
+        <MODULEPATH id="higgs_build_tools" path="../Build"/>
+      </MODULEPATHS>
+    </LINUX_MAKE>
+  </EXPORTFORMATS>
+  <MAINGROUP name="MythosStudio" id="NhrJq66R">
+    <GROUP id="{9E4C4E0D-7BAB-EB6F-87DA-FB264EC2AE68}" name="Application">
+      <GROUP id="{2F6B47CF-F27B-0D18-331F-533DE3F89310}" name="StartPage">
+        <FILE id="PewFno" name="mythos_ContentComponents.h" compile="0" resource="0"
+              file="Source/Application/StartPage/mythos_ContentComponents.h"/>
+        <FILE id="ApAD9d" name="mythos_NewProjectTemplates.h" compile="0" resource="0"
+              file="Source/Application/StartPage/mythos_NewProjectTemplates.h"/>
+        <FILE id="t8pBCG" name="mythos_NewProjectWizard.cpp" compile="1" resource="0"
+              file="Source/Application/StartPage/mythos_NewProjectWizard.cpp"/>
+        <FILE id="eoPkbr" name="mythos_NewProjectWizard.h" compile="0" resource="0"
+              file="Source/Application/StartPage/mythos_NewProjectWizard.h"/>
+        <FILE id="OuSOwU" name="mythos_StartPageComponent.cpp" compile="1" resource="0"
+              file="Source/Application/StartPage/mythos_StartPageComponent.cpp"/>
+        <FILE id="gLig4M" name="mythos_StartPageComponent.h" compile="0" resource="0"
+              file="Source/Application/StartPage/mythos_StartPageComponent.h"/>
+        <FILE id="dsxevB" name="mythos_StartPageTreeHolder.h" compile="0" resource="0"
+              file="Source/Application/StartPage/mythos_StartPageTreeHolder.h"/>
+      </GROUP>
+      <GROUP id="{2F08ABDF-C7BB-5F54-55F5-0C2E27983930}" name="Windows">
+        <FILE id="w1XB4w" name="mythos_AboutWindowComponent.h" compile="0" resource="0"
+              file="Source/Application/Windows/mythos_AboutWindowComponent.h"/>
+        <FILE id="gAju2c" name="mythos_EditorColourSchemeWindowComponent.h"
+              compile="0" resource="0" file="Source/Application/Windows/mythos_EditorColourSchemeWindowComponent.h"/>
+        <FILE id="YO9U3v" name="mythos_FloatingToolWindow.h" compile="0" resource="0"
+              file="Source/Application/Windows/mythos_FloatingToolWindow.h"/>
+        <FILE id="dqgeFF" name="mythos_GlobalPathsWindowComponent.h" compile="0"
+              resource="0" file="Source/Application/Windows/mythos_GlobalPathsWindowComponent.h"/>
+        <FILE id="snVgLV" name="mythos_PIPCreatorWindowComponent.h" compile="0"
+              resource="0" file="Source/Application/Windows/mythos_PIPCreatorWindowComponent.h"/>
+        <FILE id="RyqPBc" name="mythos_SVGPathDataWindowComponent.h" compile="0"
+              resource="0" file="Source/Application/Windows/mythos_SVGPathDataWindowComponent.h"/>
+        <FILE id="ideTas" name="mythos_TranslationToolWindowComponent.h" compile="0"
+              resource="0" file="Source/Application/Windows/mythos_TranslationToolWindowComponent.h"/>
+        <FILE id="PQ1P6k" name="mythos_UTF8WindowComponent.h" compile="0" resource="0"
+              file="Source/Application/Windows/mythos_UTF8WindowComponent.h"/>
+      </GROUP>
+      <FILE id="x5UJUE" name="mythos_Application.cpp" compile="0" resource="0"
+            file="Source/Application/mythos_Application.cpp"/>
+      <FILE id="PzHvpv" name="mythos_Application.h" compile="0" resource="0"
+            file="Source/Application/mythos_Application.h"/>
+      <FILE id="YJn4XV" name="mythos_AutoUpdater.cpp" compile="1" resource="0"
+            file="Source/Application/mythos_AutoUpdater.cpp"/>
+      <FILE id="SlBsVF" name="mythos_AutoUpdater.h" compile="0" resource="0"
+            file="Source/Application/mythos_AutoUpdater.h"/>
+      <FILE id="tbt5pt" name="mythos_CommandIDs.h" compile="0" resource="0"
+            file="Source/Application/mythos_CommandIDs.h"/>
+      <FILE id="A3x9a5" name="mythos_CommandLine.cpp" compile="1" resource="0"
+            file="Source/Application/mythos_CommandLine.cpp"/>
+      <FILE id="kofCAg" name="mythos_CommandLine.h" compile="0" resource="0"
+            file="Source/Application/mythos_CommandLine.h"/>
+      <FILE id="A0CFMd" name="mythos_CommonHeaders.h" compile="0" resource="0"
+            file="Source/Application/mythos_CommonHeaders.h"/>
+      <FILE id="XolGkQ" name="mythos_Headers.h" compile="0" resource="0" file="Source/Application/mythos_Headers.h"/>
+      <FILE id="HEuFBb" name="mythos_Main.cpp" compile="1" resource="0" file="Source/Application/mythos_Main.cpp"/>
+      <FILE id="DYThU0" name="mythos_MainWindow.cpp" compile="1" resource="0"
+            file="Source/Application/mythos_MainWindow.cpp"/>
+      <FILE id="HmkREh" name="mythos_MainWindow.h" compile="0" resource="0"
+            file="Source/Application/mythos_MainWindow.h"/>
+    </GROUP>
+    <GROUP id="{D6EDA167-C7F5-88EC-9ABB-F8A6FBD578D4}" name="Assets">
+      <GROUP id="{3919996E-77AB-F182-188C-87501AD9DE7C}" name="AppIcon.icon">
+        <GROUP id="{505EB9E7-A196-65D1-8589-3785B985B85F}" name="Assets">
+          <FILE id="nYspxh" name="higgsicon.svg" compile="0" resource="0" file="Source/Assets/AppIcon.icon/Assets/higgsicon.svg"/>
+        </GROUP>
+        <FILE id="NzgaRC" name="icon.json" compile="0" resource="0" file="Source/Assets/AppIcon.icon/icon.json"/>
+      </GROUP>
+    </GROUP>
+    <GROUP id="{BFDB3102-5EB6-41E0-043A-05C0DFF7A34D}" name="BinaryData">
+      <FILE id="wkLB4B" name="HiggsLV2Defines.h.in" compile="0" resource="1"
+            file="../Build/CMake/HiggsLV2Defines.h.in"/>
+      <FILE id="QRvesq" name="LaunchScreen.storyboard" compile="0" resource="1"
+            file="../Build/CMake/LaunchScreen.storyboard"/>
+      <FILE id="QCgjY8" name="PIPAudioProcessor.cpp.in" compile="0" resource="1"
+            file="../Build/CMake/PIPAudioProcessor.cpp.in"/>
+      <FILE id="oxq0Fs" name="PIPAudioProcessorWithARA.cpp.in" compile="0"
+            resource="1" file="../Build/CMake/PIPAudioProcessorWithARA.cpp.in"/>
+      <FILE id="AwIYFr" name="PIPComponent.cpp.in" compile="0" resource="1"
+            file="../Build/CMake/PIPComponent.cpp.in"/>
+      <FILE id="SncItz" name="PIPConsole.cpp.in" compile="0" resource="1"
+            file="../Build/CMake/PIPConsole.cpp.in"/>
+      <FILE id="xokhSP" name="RecentFilesMenuTemplate.nib" compile="0" resource="1"
+            file="../Build/CMake/RecentFilesMenuTemplate.nib"/>
+      <FILE id="H4EF8K" name="UnityPluginGUIScript.cs.in" compile="0" resource="1"
+            file="../Build/CMake/UnityPluginGUIScript.cs.in"/>
+      <GROUP id="{6528902B-862F-277C-31AA-6F6283E7D5C8}" name="gradle">
+        <FILE id="HA0Kl7" name="gradle-wrapper.jar" compile="0" resource="1"
+              file="Source/BinaryData/gradle/gradle-wrapper.jar"/>
+        <FILE id="RmqRJ9" name="gradlew" compile="0" resource="1" file="Source/BinaryData/gradle/gradlew"/>
+        <FILE id="gOeI5K" name="gradlew.bat" compile="0" resource="1" file="Source/BinaryData/gradle/gradlew.bat"/>
+        <FILE id="xtpyoD" name="LICENSE" compile="0" resource="1" file="Source/BinaryData/gradle/LICENSE"/>
+      </GROUP>
+      <GROUP id="{85F5CA8E-1014-692B-2677-292237A41AF5}" name="Icons">
+        <FILE id="HvDzzK" name="background_logo.svg" compile="0" resource="1"
+              file="Source/BinaryData/Icons/background_logo.svg"/>
+        <FILE id="qqeJmA" name="export_android.svg" compile="0" resource="1"
+              file="Source/BinaryData/Icons/export_android.svg"/>
+        <FILE id="WBmsi6" name="export_linux.svg" compile="0" resource="1"
+              file="Source/BinaryData/Icons/export_linux.svg"/>
+        <FILE id="fETsmT" name="export_visualStudio.svg" compile="0" resource="1"
+              file="Source/BinaryData/Icons/export_visualStudio.svg"/>
+        <FILE id="G0oYd6" name="export_xcode.svg" compile="0" resource="1"
+              file="Source/BinaryData/Icons/export_xcode.svg"/>
+        <FILE id="Zrx1Gl" name="higgs_icon.png" compile="0" resource="1" file="Source/BinaryData/Icons/higgs_icon.png"/>
+        <FILE id="iPYmG9" name="wizard_AnimatedApp.svg" compile="0" resource="1"
+              file="Source/BinaryData/Icons/wizard_AnimatedApp.svg"/>
+        <FILE id="nAIo3Q" name="wizard_AudioApp.svg" compile="0" resource="1"
+              file="Source/BinaryData/Icons/wizard_AudioApp.svg"/>
+        <FILE id="hwarU2" name="wizard_AudioPlugin.svg" compile="0" resource="1"
+              file="Source/BinaryData/Icons/wizard_AudioPlugin.svg"/>
+        <FILE id="SMzg53" name="wizard_ConsoleApp.svg" compile="0" resource="1"
+              file="Source/BinaryData/Icons/wizard_ConsoleApp.svg"/>
+        <FILE id="YG6Eva" name="wizard_DLL.svg" compile="0" resource="1" file="Source/BinaryData/Icons/wizard_DLL.svg"/>
+        <FILE id="obZCkC" name="wizard_GUI.svg" compile="0" resource="1" file="Source/BinaryData/Icons/wizard_GUI.svg"/>
+        <FILE id="U47vkJ" name="wizard_Highlight.svg" compile="0" resource="1"
+              file="Source/BinaryData/Icons/wizard_Highlight.svg"/>
+        <FILE id="k4YA4V" name="wizard_Openfile.svg" compile="0" resource="1"
+              file="Source/BinaryData/Icons/wizard_Openfile.svg"/>
+        <FILE id="jYodWX" name="wizard_OpenGL.svg" compile="0" resource="1"
+              file="Source/BinaryData/Icons/wizard_OpenGL.svg"/>
+        <FILE id="Rbi6lX" name="wizard_StaticLibrary.svg" compile="0" resource="1"
+              file="Source/BinaryData/Icons/wizard_StaticLibrary.svg"/>
+      </GROUP>
+      <GROUP id="{A8B4BB53-2426-F6A0-9FB1-463BB9D64DB4}" name="Templates">
+        <FILE id="Uadbrm" name="mythos_AnimatedComponentSimpleTemplate.h" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_AnimatedComponentSimpleTemplate.h"/>
+        <FILE id="fFFqLB" name="mythos_AnimatedComponentTemplate.cpp" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_AnimatedComponentTemplate.cpp"/>
+        <FILE id="Wh7G1x" name="mythos_AnimatedComponentTemplate.h" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_AnimatedComponentTemplate.h"/>
+        <FILE id="jzLsG8" name="mythos_AudioComponentSimpleTemplate.h" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_AudioComponentSimpleTemplate.h"/>
+        <FILE id="BzvUrn" name="mythos_AudioComponentTemplate.cpp" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_AudioComponentTemplate.cpp"/>
+        <FILE id="i9bm2b" name="mythos_AudioComponentTemplate.h" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_AudioComponentTemplate.h"/>
+        <FILE id="qqnMJs" name="mythos_AudioPluginARADocumentControllerTemplate.cpp"
+              compile="0" resource="1" file="Source/BinaryData/Templates/mythos_AudioPluginARADocumentControllerTemplate.cpp"/>
+        <FILE id="nEnvoi" name="mythos_AudioPluginARADocumentControllerTemplate.h"
+              compile="0" resource="1" file="Source/BinaryData/Templates/mythos_AudioPluginARADocumentControllerTemplate.h"/>
+        <FILE id="iwCmfX" name="mythos_AudioPluginARAEditorTemplate.cpp" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_AudioPluginARAEditorTemplate.cpp"/>
+        <FILE id="Sg3E7I" name="mythos_AudioPluginARAEditorTemplate.h" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_AudioPluginARAEditorTemplate.h"/>
+        <FILE id="GiKUFl" name="mythos_AudioPluginARAFilterTemplate.h" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_AudioPluginARAFilterTemplate.h"/>
+        <FILE id="H2uvhd" name="mythos_AudioPluginARAPlaybackRendererTemplate.cpp"
+              compile="0" resource="1" file="Source/BinaryData/Templates/mythos_AudioPluginARAPlaybackRendererTemplate.cpp"/>
+        <FILE id="U7eXlD" name="mythos_AudioPluginARAPlaybackRendererTemplate.h"
+              compile="0" resource="1" file="Source/BinaryData/Templates/mythos_AudioPluginARAPlaybackRendererTemplate.h"/>
+        <FILE id="BYSiw7" name="mythos_AudioPluginEditorTemplate.cpp" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_AudioPluginEditorTemplate.cpp"/>
+        <FILE id="wcuIlm" name="mythos_AudioPluginEditorTemplate.h" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_AudioPluginEditorTemplate.h"/>
+        <FILE id="Ik2XYj" name="mythos_AudioPluginFilterTemplate.cpp" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_AudioPluginFilterTemplate.cpp"/>
+        <FILE id="ZuBmpP" name="mythos_AudioPluginFilterTemplate.h" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_AudioPluginFilterTemplate.h"/>
+        <FILE id="fnjYOi" name="mythos_ComponentTemplate.cpp" compile="0" resource="1"
+              file="Source/BinaryData/Templates/mythos_ComponentTemplate.cpp"/>
+        <FILE id="BlVkqH" name="mythos_ComponentTemplate.h" compile="0" resource="1"
+              file="Source/BinaryData/Templates/mythos_ComponentTemplate.h"/>
+        <FILE id="xfOeO3" name="mythos_ContentCompSimpleTemplate.h" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_ContentCompSimpleTemplate.h"/>
+        <FILE id="HX3JPg" name="mythos_ContentCompTemplate.cpp" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_ContentCompTemplate.cpp"/>
+        <FILE id="QTVhfj" name="mythos_ContentCompTemplate.h" compile="0" resource="1"
+              file="Source/BinaryData/Templates/mythos_ContentCompTemplate.h"/>
+        <FILE id="PuyOnZ" name="mythos_InlineComponentTemplate.h" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_InlineComponentTemplate.h"/>
+        <FILE id="FwmOVk" name="mythos_MainConsoleAppTemplate.cpp" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_MainConsoleAppTemplate.cpp"/>
+        <FILE id="IW9dIW" name="mythos_MainTemplate_NoWindow.cpp" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_MainTemplate_NoWindow.cpp"/>
+        <FILE id="Zx5T5B" name="mythos_MainTemplate_Window.cpp" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_MainTemplate_Window.cpp"/>
+        <FILE id="jCBXcQ" name="mythos_NewComponentTemplate.cpp" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_NewComponentTemplate.cpp"/>
+        <FILE id="Jmpp81" name="mythos_NewComponentTemplate.h" compile="0" resource="1"
+              file="Source/BinaryData/Templates/mythos_NewComponentTemplate.h"/>
+        <FILE id="mJuFw3" name="mythos_NewCppFileTemplate.cpp" compile="0" resource="1"
+              file="Source/BinaryData/Templates/mythos_NewCppFileTemplate.cpp"/>
+        <FILE id="AMybWD" name="mythos_NewCppFileTemplate.h" compile="0" resource="1"
+              file="Source/BinaryData/Templates/mythos_NewCppFileTemplate.h"/>
+        <FILE id="UfHALE" name="mythos_NewInlineComponentTemplate.h" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_NewInlineComponentTemplate.h"/>
+        <FILE id="l16bPj" name="mythos_OpenGLComponentSimpleTemplate.h" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_OpenGLComponentSimpleTemplate.h"/>
+        <FILE id="r1X5GG" name="mythos_OpenGLComponentTemplate.cpp" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_OpenGLComponentTemplate.cpp"/>
+        <FILE id="FBo5Mj" name="mythos_OpenGLComponentTemplate.h" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_OpenGLComponentTemplate.h"/>
+        <FILE id="e0zFrj" name="mythos_PIPAudioProcessorTemplate.h" compile="0"
+              resource="1" file="Source/BinaryData/Templates/mythos_PIPAudioProcessorTemplate.h"/>
+        <FILE id="iamwVV" name="mythos_PIPTemplate.h" compile="0" resource="1"
+              file="Source/BinaryData/Templates/mythos_PIPTemplate.h"/>
+      </GROUP>
+      <FILE id="Dfk9dC" name="colourscheme_dark.xml" compile="0" resource="1"
+            file="Source/BinaryData/colourscheme_dark.xml"/>
+      <FILE id="bvFank" name="colourscheme_light.xml" compile="0" resource="1"
+            file="Source/BinaryData/colourscheme_light.xml"/>
+      <FILE id="SDFoQY" name="higgs_runtime_arch_detection.cpp" compile="0"
+            resource="1" file="../Build/CMake/higgs_runtime_arch_detection.cpp"/>
+      <FILE id="m0ZzB2" name="higgs_LinuxSubprocessHelper.cpp" compile="0"
+            resource="1" file="../Build/CMake/higgs_LinuxSubprocessHelper.cpp"/>
+      <FILE id="OMFBxs" name="higgs_SimpleBinaryBuilder.cpp" compile="0" resource="1"
+            file="Source/BinaryData/higgs_SimpleBinaryBuilder.cpp"/>
+    </GROUP>
+    <GROUP id="{A5AE7471-B900-FD9D-8DE7-2FB68D11AE30}" name="CodeEditor">
+      <FILE id="w3ka6n" name="mythos_DocumentEditorComponent.cpp" compile="1"
+            resource="0" file="Source/CodeEditor/mythos_DocumentEditorComponent.cpp"/>
+      <FILE id="Gx36m4" name="mythos_DocumentEditorComponent.h" compile="0"
+            resource="0" file="Source/CodeEditor/mythos_DocumentEditorComponent.h"/>
+      <FILE id="uKOPR9" name="mythos_ItemPreviewComponent.h" compile="0" resource="0"
+            file="Source/CodeEditor/mythos_ItemPreviewComponent.h"/>
+      <FILE id="iHU8kh" name="mythos_OpenDocumentManager.cpp" compile="1"
+            resource="0" file="Source/CodeEditor/mythos_OpenDocumentManager.cpp"/>
+      <FILE id="Bz5yDH" name="mythos_OpenDocumentManager.h" compile="0" resource="0"
+            file="Source/CodeEditor/mythos_OpenDocumentManager.h"/>
+      <FILE id="S5gj8r" name="mythos_SourceCodeEditor.cpp" compile="1" resource="0"
+            file="Source/CodeEditor/mythos_SourceCodeEditor.cpp"/>
+      <FILE id="DWxv2K" name="mythos_SourceCodeEditor.h" compile="0" resource="0"
+            file="Source/CodeEditor/mythos_SourceCodeEditor.h"/>
+    </GROUP>
+    <GROUP id="{6653587F-C475-46AA-E7CF-1D0DFA0FEAA9}" name="Project">
+      <GROUP id="{F2E7D5CA-F002-2635-DA2C-898FA5EA2936}" name="Modules">
+        <FILE id="w7QIJd" name="mythos_AvailableModulesList.h" compile="0" resource="0"
+              file="Source/Project/Modules/mythos_AvailableModulesList.h"/>
+        <FILE id="fQrJvA" name="mythos_ModuleDescription.h" compile="0" resource="0"
+              file="Source/Project/Modules/mythos_ModuleDescription.h"/>
+        <FILE id="mOC0iL" name="mythos_Modules.cpp" compile="1" resource="0"
+              file="Source/Project/Modules/mythos_Modules.cpp"/>
+        <FILE id="TnngL4" name="mythos_Modules.h" compile="0" resource="0" file="Source/Project/Modules/mythos_Modules.h"/>
+      </GROUP>
+      <GROUP id="{C37B7D1A-F059-9C82-9436-A2A94552BF90}" name="UI">
+        <GROUP id="{19B83596-13BE-A80E-2722-BB5CCDA111FA}" name="Sidebar">
+          <FILE id="bItg9o" name="mythos_ExporterTreeItems.h" compile="0" resource="0"
+                file="Source/Project/UI/Sidebar/mythos_ExporterTreeItems.h"/>
+          <FILE id="zrho6r" name="mythos_FileTreeItems.h" compile="0" resource="0"
+                file="Source/Project/UI/Sidebar/mythos_FileTreeItems.h"/>
+          <FILE id="HAByBK" name="mythos_ModuleTreeItems.h" compile="0" resource="0"
+                file="Source/Project/UI/Sidebar/mythos_ModuleTreeItems.h"/>
+          <FILE id="Htgucp" name="mythos_ProjectTreeItemBase.h" compile="0" resource="0"
+                file="Source/Project/UI/Sidebar/mythos_ProjectTreeItemBase.h"/>
+          <FILE id="IO8GgB" name="mythos_Sidebar.h" compile="0" resource="0" file="Source/Project/UI/Sidebar/mythos_Sidebar.h"/>
+          <FILE id="jr8KTF" name="mythos_TreeItemTypes.h" compile="0" resource="0"
+                file="Source/Project/UI/Sidebar/mythos_TreeItemTypes.h"/>
+        </GROUP>
+        <FILE id="ZEngbS" name="mythos_ContentViewComponents.h" compile="0"
+              resource="0" file="Source/Project/UI/mythos_ContentViewComponents.h"/>
+        <FILE id="wFypDd" name="mythos_FileGroupInformationComponent.h" compile="0"
+              resource="0" file="Source/Project/UI/mythos_FileGroupInformationComponent.h"/>
+        <FILE id="CSQKUL" name="mythos_HeaderComponent.cpp" compile="1" resource="0"
+              file="Source/Project/UI/mythos_HeaderComponent.cpp"/>
+        <FILE id="QVjJdU" name="mythos_HeaderComponent.h" compile="0" resource="0"
+              file="Source/Project/UI/mythos_HeaderComponent.h"/>
+        <FILE id="dN0Xzo" name="mythos_ModulesInformationComponent.h" compile="0"
+              resource="0" file="Source/Project/UI/mythos_ModulesInformationComponent.h"/>
+        <FILE id="PNCb48" name="mythos_ProjectContentComponent.cpp" compile="0"
+              resource="0" file="Source/Project/UI/mythos_ProjectContentComponent.cpp"/>
+        <FILE id="z576fZ" name="mythos_ProjectContentComponent.h" compile="0"
+              resource="0" file="Source/Project/UI/mythos_ProjectContentComponent.h"/>
+        <FILE id="itkVli" name="mythos_ProjectMessagesComponent.h" compile="0"
+              resource="0" file="Source/Project/UI/mythos_ProjectMessagesComponent.h"/>
+      </GROUP>
+      <FILE id="JT1rMJ" name="mythos_Project.cpp" compile="1" resource="0"
+            file="Source/Project/mythos_Project.cpp"/>
+      <FILE id="bUjtVS" name="mythos_Project.h" compile="0" resource="0" file="Source/Project/mythos_Project.h"/>
+    </GROUP>
+    <GROUP id="{00CEE998-91CD-5001-DE85-4F4895E99A32}" name="ProjectSaving">
+      <FILE id="JBLk8Y" name="mythos_ProjectExport_Android.h" compile="0"
+            resource="0" file="Source/ProjectSaving/mythos_ProjectExport_Android.h"/>
+      <FILE id="wLX3RL" name="mythos_ProjectExport_Make.h" compile="0" resource="0"
+            file="Source/ProjectSaving/mythos_ProjectExport_Make.h"/>
+      <FILE id="rMbSVA" name="mythos_ProjectExport_MSVC.h" compile="0" resource="0"
+            file="Source/ProjectSaving/mythos_ProjectExport_MSVC.h"/>
+      <FILE id="aKKWtG" name="mythos_ProjectExport_Xcode.h" compile="0" resource="0"
+            file="Source/ProjectSaving/mythos_ProjectExport_Xcode.h"/>
+      <FILE id="EqKGRV" name="mythos_ProjectExporter.cpp" compile="1" resource="0"
+            file="Source/ProjectSaving/mythos_ProjectExporter.cpp"/>
+      <FILE id="FEsoP1" name="mythos_ProjectExporter.h" compile="0" resource="0"
+            file="Source/ProjectSaving/mythos_ProjectExporter.h"/>
+      <FILE id="dTbi7B" name="mythos_ProjectSaver.cpp" compile="1" resource="0"
+            file="Source/ProjectSaving/mythos_ProjectSaver.cpp"/>
+      <FILE id="HjoAOD" name="mythos_ProjectSaver.h" compile="0" resource="0"
+            file="Source/ProjectSaving/mythos_ProjectSaver.h"/>
+      <FILE id="YcgwX0" name="mythos_ResourceFile.cpp" compile="1" resource="0"
+            file="Source/ProjectSaving/mythos_ResourceFile.cpp"/>
+      <FILE id="d4INvx" name="mythos_ResourceFile.h" compile="0" resource="0"
+            file="Source/ProjectSaving/mythos_ResourceFile.h"/>
+      <FILE id="kw0nyx" name="mythos_XcodeProjectParser.h" compile="0" resource="0"
+            file="Source/ProjectSaving/mythos_XcodeProjectParser.h"/>
+    </GROUP>
+    <GROUP id="{DC7C1395-DD88-0C6C-2D8A-EC48A63D31E8}" name="Settings">
+      <FILE id="DsopUB" name="mythos_AppearanceSettings.cpp" compile="1" resource="0"
+            file="Source/Settings/mythos_AppearanceSettings.cpp"/>
+      <FILE id="GToVJg" name="mythos_AppearanceSettings.h" compile="0" resource="0"
+            file="Source/Settings/mythos_AppearanceSettings.h"/>
+      <FILE id="TvEsmH" name="mythos_StoredSettings.cpp" compile="1" resource="0"
+            file="Source/Settings/mythos_StoredSettings.cpp"/>
+      <FILE id="NM0cs9" name="mythos_StoredSettings.h" compile="0" resource="0"
+            file="Source/Settings/mythos_StoredSettings.h"/>
+    </GROUP>
+    <GROUP id="{95DBFE17-0A31-0729-A633-C52B640801E5}" name="Utility">
+      <GROUP id="{B7989E96-4C08-4D17-CBEA-4F3985A734D5}" name="Helpers">
+        <FILE id="ChGAda" name="mythos_CodeHelpers.cpp" compile="1" resource="0"
+              file="Source/Utility/Helpers/mythos_CodeHelpers.cpp"/>
+        <FILE id="BAetgk" name="mythos_CodeHelpers.h" compile="0" resource="0"
+              file="Source/Utility/Helpers/mythos_CodeHelpers.h"/>
+        <FILE id="T0VJHN" name="mythos_Colours.h" compile="0" resource="0" file="Source/Utility/Helpers/mythos_Colours.h"/>
+        <FILE id="uU5v1P" name="mythos_FileHelpers.cpp" compile="1" resource="0"
+              file="Source/Utility/Helpers/mythos_FileHelpers.cpp"/>
+        <FILE id="AmiISQ" name="mythos_FileHelpers.h" compile="0" resource="0"
+              file="Source/Utility/Helpers/mythos_FileHelpers.h"/>
+        <FILE id="qmqkqc" name="mythos_MiscUtilities.cpp" compile="1" resource="0"
+              file="Source/Utility/Helpers/mythos_MiscUtilities.cpp"/>
+        <FILE id="ilDiWE" name="mythos_MiscUtilities.h" compile="0" resource="0"
+              file="Source/Utility/Helpers/mythos_MiscUtilities.h"/>
+        <FILE id="BICStH" name="mythos_NewFileWizard.cpp" compile="1" resource="0"
+              file="Source/Utility/Helpers/mythos_NewFileWizard.cpp"/>
+        <FILE id="laRrOn" name="mythos_NewFileWizard.h" compile="0" resource="0"
+              file="Source/Utility/Helpers/mythos_NewFileWizard.h"/>
+        <FILE id="rCaPHQ" name="mythos_PresetIDs.h" compile="0" resource="0"
+              file="Source/Utility/Helpers/mythos_PresetIDs.h"/>
+        <FILE id="gOrmP5" name="mythos_TranslationHelpers.h" compile="0" resource="0"
+              file="Source/Utility/Helpers/mythos_TranslationHelpers.h"/>
+        <FILE id="EuC4K4" name="mythos_ValueSourceHelpers.h" compile="0" resource="0"
+              file="Source/Utility/Helpers/mythos_ValueSourceHelpers.h"/>
+        <FILE id="BPCoKV" name="mythos_VersionInfo.cpp" compile="1" resource="0"
+              file="Source/Utility/Helpers/mythos_VersionInfo.cpp"/>
+        <FILE id="TnBQtv" name="mythos_VersionInfo.h" compile="0" resource="0"
+              file="Source/Utility/Helpers/mythos_VersionInfo.h"/>
+      </GROUP>
+      <GROUP id="{A07C4A97-0855-5346-CAF2-A005580B6773}" name="PIPs">
+        <FILE id="joAnDa" name="mythos_PIPGenerator.cpp" compile="1" resource="0"
+              file="Source/Utility/PIPs/mythos_PIPGenerator.cpp"/>
+        <FILE id="GnbSDi" name="mythos_PIPGenerator.h" compile="0" resource="0"
+              file="Source/Utility/PIPs/mythos_PIPGenerator.h"/>
+      </GROUP>
+      <GROUP id="{35F9B4BB-E683-1394-4BF2-C8F0C772168F}" name="UI">
+        <GROUP id="{FE8C76CF-7C05-EC86-8997-C9941B88670B}" name="PropertyComponents">
+          <FILE id="eleFsw" name="mythos_ColourPropertyComponent.h" compile="0"
+                resource="0" file="Source/Utility/UI/PropertyComponents/mythos_ColourPropertyComponent.h"/>
+          <FILE id="sfUzaf" name="mythos_FilePathPropertyComponent.h" compile="0"
+                resource="0" file="Source/Utility/UI/PropertyComponents/mythos_FilePathPropertyComponent.h"/>
+          <FILE id="c5PWPd" name="mythos_LabelPropertyComponent.h" compile="0"
+                resource="0" file="Source/Utility/UI/PropertyComponents/mythos_LabelPropertyComponent.h"/>
+          <FILE id="DkLOIQ" name="mythos_PropertyComponentsWithEnablement.h" compile="0"
+                resource="0" file="Source/Utility/UI/PropertyComponents/mythos_PropertyComponentsWithEnablement.h"/>
+        </GROUP>
+        <FILE id="VQCK4C" name="mythos_IconButton.h" compile="0" resource="0"
+              file="Source/Utility/UI/mythos_IconButton.h"/>
+        <FILE id="JH1ze6" name="mythos_Icons.cpp" compile="1" resource="0" file="Source/Utility/UI/mythos_Icons.cpp"/>
+        <FILE id="op3Mkj" name="mythos_Icons.h" compile="0" resource="0" file="Source/Utility/UI/mythos_Icons.h"/>
+        <FILE id="A3YDvg" name="mythos_MythosTreeViewBase.cpp" compile="1" resource="0"
+              file="Source/Utility/UI/mythos_MythosTreeViewBase.cpp"/>
+        <FILE id="bPFTPx" name="mythos_MythosTreeViewBase.h" compile="0" resource="0"
+              file="Source/Utility/UI/mythos_MythosTreeViewBase.h"/>
+        <FILE id="D583iw" name="mythos_MythosStudioLookAndFeel.cpp" compile="1"
+              resource="0" file="Source/Utility/UI/mythos_MythosStudioLookAndFeel.cpp"/>
+        <FILE id="QcQx1o" name="mythos_MythosStudioLookAndFeel.h" compile="0" resource="0"
+              file="Source/Utility/UI/mythos_MythosStudioLookAndFeel.h"/>
+        <FILE id="wxiDqe" name="mythos_SlidingPanelComponent.cpp" compile="1"
+              resource="0" file="Source/Utility/UI/mythos_SlidingPanelComponent.cpp"/>
+        <FILE id="cbUrIP" name="mythos_SlidingPanelComponent.h" compile="0"
+              resource="0" file="Source/Utility/UI/mythos_SlidingPanelComponent.h"/>
+      </GROUP>
+    </GROUP>
+  </MAINGROUP>
+  <HIGGSOPTIONS HIGGS_LOG_ASSERTIONS="1" HIGGS_USE_CURL="1" HIGGS_ALLOW_STATIC_NULL_VARIABLES="0"
+               HIGGS_STRICT_REFCOUNTEDPOINTER="1" HIGGS_LOAD_CURL_SYMBOLS_LAZILY="1"
+               HIGGS_WEB_BROWSER="0"/>
+  <MODULES>
+    <MODULE id="higgs_build_tools" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="higgs_core" showAllCode="1"/>
+    <MODULE id="higgs_cryptography" showAllCode="1"/>
+    <MODULE id="higgs_data_structures" showAllCode="1"/>
+    <MODULE id="higgs_events" showAllCode="1"/>
+    <MODULE id="higgs_graphics" showAllCode="1"/>
+    <MODULE id="higgs_gui_basics" showAllCode="1"/>
+    <MODULE id="higgs_gui_extra" showAllCode="1"/>
+  </MODULES>
+  <LIVE_SETTINGS>
+    <OSX enableCxx11="1"/>
+    <WINDOWS enableCxx11="1"/>
+    <LINUX/>
+  </LIVE_SETTINGS>
+</MYTHOSPROJECT>
