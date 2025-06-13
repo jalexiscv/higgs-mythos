@@ -1,0 +1,176 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+#pragma once
+
+#include "mythos_ModuleDescription.h"
+
+#include <future>
+
+//==============================================================================
+class AvailableModulesList final : private AsyncUpdater
+{
+public:
+    using ModuleIDAndFolder     = std::pair<String, File>;
+    using ModuleIDAndFolderList = std::vector<ModuleIDAndFolder>;
+
+    AvailableModulesList() = default;
+
+    //==============================================================================
+    void scanPaths (const Array<File>& paths)
+    {
+        scanPathsAsync (paths);
+        scanner = {};
+    }
+
+    void scanPathsAsync (const Array<File>& paths)
+    {
+        scanner = std::async (std::launch::async, [this, paths]
+        {
+            ModuleIDAndFolderList list;
+
+            for (auto& p : paths)
+                addAllModulesInFolder (p, list);
+
+            std::sort (list.begin(), list.end(), [] (const ModuleIDAndFolder& m1,
+                                                     const ModuleIDAndFolder& m2)
+            {
+                return m1.first.compareIgnoreCase (m2.first) < 0;
+            });
+
+            {
+                const ScopedLock swapLock (lock);
+
+                if (list == modulesList)
+                    return;
+
+                modulesList.swap (list);
+            }
+
+            triggerAsyncUpdate();
+        });
+    }
+
+    //==============================================================================
+    ModuleIDAndFolderList getAllModules() const
+    {
+        const ScopedLock readLock (lock);
+        return modulesList;
+    }
+
+    ModuleIDAndFolder getModuleWithID (const String& id) const
+    {
+        const ScopedLock readLock (lock);
+
+        for (auto& mod : modulesList)
+            if (mod.first == id)
+                return mod;
+
+        return {};
+    }
+
+    //==============================================================================
+    void removeDuplicates (const ModuleIDAndFolderList& other)
+    {
+        const ScopedLock readLock (lock);
+
+        const auto predicate = [&] (const ModuleIDAndFolder& entry)
+        {
+            return std::find (other.begin(), other.end(), entry) != other.end();
+        };
+
+        modulesList.erase (std::remove_if (modulesList.begin(), modulesList.end(), predicate),
+                           modulesList.end());
+    }
+
+    //==============================================================================
+    struct Listener
+    {
+        virtual ~Listener() = default;
+        virtual void availableModulesChanged (AvailableModulesList* listThatHasChanged) = 0;
+    };
+
+    void addListener (Listener* listenerToAdd)          { listeners.add (listenerToAdd); }
+    void removeListener (Listener* listenerToRemove)    { listeners.remove (listenerToRemove); }
+
+private:
+    //==============================================================================
+    static bool tryToAddModuleFromFolder (const File& path, ModuleIDAndFolderList& list)
+    {
+        ModuleDescription m (path);
+
+        if (m.isValid()
+            && std::none_of (list.begin(), list.end(),
+                             [&m] (const ModuleIDAndFolder& element) { return element.first == m.getID(); }))
+        {
+            list.push_back ({ m.getID(), path });
+            return true;
+        }
+
+        return false;
+    }
+
+    static void addAllModulesInFolder (const File& topLevelPath, ModuleIDAndFolderList& list)
+    {
+        struct FileAndDepth
+        {
+            File file;
+            int depth;
+        };
+
+        std::queue<FileAndDepth> pathsToCheck;
+        pathsToCheck.push ({ topLevelPath, 0 });
+
+        while (! pathsToCheck.empty())
+        {
+            const auto path = pathsToCheck.front();
+            pathsToCheck.pop();
+
+            if (tryToAddModuleFromFolder (path.file, list) || path.depth == 3)
+                continue;
+
+            for (const auto& iter : RangedDirectoryIterator (path.file, false, "*", File::findDirectories))
+            {
+                if (auto* job = ThreadPoolJob::getCurrentThreadPoolJob())
+                    if (job->shouldExit())
+                        return;
+
+                pathsToCheck.push ({ iter.getFile(), path.depth + 1 });
+            }
+        }
+    }
+
+    //==============================================================================
+    void handleAsyncUpdate() override
+    {
+        listeners.call ([this] (Listener& l) { l.availableModulesChanged (this); });
+    }
+
+    //==============================================================================
+    ModuleIDAndFolderList modulesList;
+    ListenerList<Listener> listeners;
+    CriticalSection lock;
+    std::future<void> scanner;
+
+    //==============================================================================
+    HIGGS_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AvailableModulesList)
+};
