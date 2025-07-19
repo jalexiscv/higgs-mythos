@@ -1,0 +1,248 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+#include "../../Application/mythos_Headers.h"
+#include "mythos_MythosTreeViewBase.h"
+#include "../../Project/UI/mythos_ProjectContentComponent.h"
+
+//==============================================================================
+void TreePanelBase::setRoot (std::unique_ptr<MythosTreeViewBase> root)
+{
+    rootItem = std::move (root);
+    tree.setRootItem (rootItem.get());
+    tree.getRootItem()->setOpen (true);
+
+    if (project != nullptr)
+    {
+        if (auto treeOpenness = project->getStoredProperties().getXmlValue (opennessStateKey))
+        {
+            tree.restoreOpennessState (*treeOpenness, true);
+
+            for (int i = tree.getNumSelectedItems(); --i >= 0;)
+                if (auto item = dynamic_cast<MythosTreeViewBase*> (tree.getSelectedItem (i)))
+                    item->cancelDelayedSelectionTimer();
+        }
+    }
+}
+
+void TreePanelBase::saveOpenness()
+{
+    if (project != nullptr)
+    {
+        std::unique_ptr<XmlElement> opennessState (tree.getOpennessState (true));
+
+        if (opennessState != nullptr)
+            project->getStoredProperties().setValue (opennessStateKey, opennessState.get());
+        else
+            project->getStoredProperties().removeValue (opennessStateKey);
+    }
+}
+
+//==============================================================================
+MythosTreeViewBase::MythosTreeViewBase()
+{
+    setLinesDrawnForSubItems (false);
+    setDrawsInLeftMargin (true);
+}
+
+void MythosTreeViewBase::refreshSubItems()
+{
+    WholeTreeOpennessRestorer wtor (*this);
+    clearSubItems();
+    addSubItems();
+}
+
+Font MythosTreeViewBase::getFont() const
+{
+    return FontOptions ((float) getItemHeight() * 0.6f);
+}
+
+void MythosTreeViewBase::paintOpenCloseButton (Graphics& g, const Rectangle<float>& area, Colour /*backgroundColour*/, bool isMouseOver)
+{
+    g.setColour (getOwnerView()->findColour (isSelected() ? defaultHighlightedTextColourId : treeIconColourId));
+    TreeViewItem::paintOpenCloseButton (g, area, getOwnerView()->findColour (defaultIconColourId), isMouseOver);
+}
+
+void MythosTreeViewBase::paintIcon (Graphics& g, Rectangle<float> area)
+{
+    g.setColour (getContentColour (true));
+    getIcon().draw (g, area, isIconCrossedOut());
+    textX = roundToInt (area.getRight()) + 7;
+}
+
+void MythosTreeViewBase::paintItem (Graphics& g, int width, int height)
+{
+    ignoreUnused (width, height);
+
+    auto bounds = g.getClipBounds().withY (0).withHeight (height).toFloat();
+
+    g.setColour (getOwnerView()->findColour (treeIconColourId).withMultipliedAlpha (0.4f));
+    g.fillRect (bounds.removeFromBottom (0.5f).reduced (5, 0));
+}
+
+Colour MythosTreeViewBase::getContentColour (bool isIcon) const
+{
+    if (isMissing())      return Colours::red;
+    if (isSelected())     return getOwnerView()->findColour (defaultHighlightedTextColourId);
+    if (hasWarnings())    return getOwnerView()->findColour (defaultHighlightColourId);
+
+    return getOwnerView()->findColour (isIcon ? treeIconColourId : defaultTextColourId);
+}
+
+void MythosTreeViewBase::paintContent (Graphics& g, Rectangle<int> area)
+{
+    g.setFont (getFont());
+    g.setColour (getContentColour (false));
+
+    g.drawFittedText (getDisplayName(), area, Justification::centredLeft, 1, 1.0f);
+}
+
+std::unique_ptr<Component> MythosTreeViewBase::createItemComponent()
+{
+    return std::make_unique<TreeItemComponent> (*this);
+}
+
+//==============================================================================
+class RenameTreeItemCallback final : public ModalComponentManager::Callback
+{
+public:
+    RenameTreeItemCallback (MythosTreeViewBase& ti, Component& parent, const Rectangle<int>& bounds)
+        : item (ti)
+    {
+        ed.setMultiLine (false, false);
+        ed.setPopupMenuEnabled (false);
+        ed.setSelectAllWhenFocused (true);
+        ed.setFont (item.getFont());
+        ed.onReturnKey = [this] { ed.exitModalState (1); };
+        ed.onEscapeKey = [this] { ed.exitModalState (0); };
+        ed.onFocusLost = [this] { ed.exitModalState (0); };
+        ed.setText (item.getRenamingName());
+        ed.setBounds (bounds);
+
+        parent.addAndMakeVisible (ed);
+        ed.enterModalState (true, this);
+    }
+
+    void modalStateFinished (int resultCode) override
+    {
+        if (resultCode != 0)
+            item.setName (ed.getText());
+    }
+
+private:
+    struct RenameEditor final : public TextEditor
+    {
+        void inputAttemptWhenModal() override   { exitModalState (0); }
+    };
+
+    RenameEditor ed;
+    MythosTreeViewBase& item;
+
+    HIGGS_DECLARE_NON_COPYABLE (RenameTreeItemCallback)
+};
+
+void MythosTreeViewBase::showRenameBox()
+{
+    Rectangle<int> r (getItemPosition (true));
+    r.setLeft (r.getX() + textX);
+    r.setHeight (getItemHeight());
+
+    new RenameTreeItemCallback (*this, *getOwnerView(), r);
+}
+
+void MythosTreeViewBase::itemClicked (const MouseEvent& e)
+{
+    if (e.mods.isPopupMenu())
+    {
+        if (getOwnerView()->getNumSelectedItems() > 1)
+            showMultiSelectionPopupMenu (e.getMouseDownScreenPosition());
+        else
+            showPopupMenu (e.getMouseDownScreenPosition());
+    }
+    else if (isSelected())
+    {
+        itemSelectionChanged (true);
+    }
+}
+
+static void treeViewMenuItemChosen (int resultCode, WeakReference<MythosTreeViewBase> item)
+{
+    if (item != nullptr)
+        item->handlePopupMenuResult (resultCode);
+}
+
+void MythosTreeViewBase::launchPopupMenu (PopupMenu& m, Point<int> p)
+{
+    m.showMenuAsync (PopupMenu::Options().withTargetScreenArea ({ p.x, p.y, 1, 1 }),
+                     ModalCallbackFunction::create (treeViewMenuItemChosen, WeakReference<MythosTreeViewBase> (this)));
+}
+
+ProjectContentComponent* MythosTreeViewBase::getProjectContentComponent() const
+{
+    for (Component* c = getOwnerView(); c != nullptr; c = c->getParentComponent())
+        if (ProjectContentComponent* pcc = dynamic_cast<ProjectContentComponent*> (c))
+            return pcc;
+
+    return nullptr;
+}
+
+//==============================================================================
+class MythosTreeViewBase::ItemSelectionTimer final : public Timer
+{
+public:
+    explicit ItemSelectionTimer (MythosTreeViewBase& tvb)  : owner (tvb) {}
+
+    void timerCallback() override    { owner.invokeShowDocument(); }
+
+private:
+    MythosTreeViewBase& owner;
+    HIGGS_DECLARE_NON_COPYABLE (ItemSelectionTimer)
+};
+
+void MythosTreeViewBase::itemSelectionChanged (bool isNowSelected)
+{
+    if (isNowSelected)
+    {
+        delayedSelectionTimer.reset (new ItemSelectionTimer (*this));
+        delayedSelectionTimer->startTimer (getMillisecsAllowedForDragGesture());
+    }
+    else
+    {
+        cancelDelayedSelectionTimer();
+    }
+}
+
+void MythosTreeViewBase::invokeShowDocument()
+{
+    cancelDelayedSelectionTimer();
+    showDocument();
+}
+
+void MythosTreeViewBase::itemDoubleClicked (const MouseEvent&)
+{
+    invokeShowDocument();
+}
+
+void MythosTreeViewBase::cancelDelayedSelectionTimer()
+{
+    delayedSelectionTimer.reset();
+}
