@@ -1,0 +1,37 @@
+{
+  "id":             "higgs_core",
+  "name":           "HIGGS core classes",
+  "version":        "3.0.0",
+  "description":    "The essential set of basic HIGGS classes, as required by all the other HIGGS modules. Includes text, container, memory, threading and i/o functionality.",
+  "website":        "https://github.com/jalexiscv/higgs-mythos",
+  "license":        "ISC Permissive",
+
+  "dependencies":   [],
+
+  "include":        "higgs_core.h",
+
+  "compile":        [ { "file": "higgs_core.cpp", "target": "! xcode" },
+                      { "file": "higgs_core.mm",  "target": "xcode" } ],
+
+  "browse":         [ "text/*",
+                      "maths/*",
+                      "memory/*",
+                      "containers/*",
+                      "threads/*",
+                      "time/*",
+                      "files/*",
+                      "network/*",
+                      "streams/*",
+                      "logging/*",
+                      "system/*",
+                      "xml/*",
+                      "json/*",
+                      "zip/*",
+                      "unit_tests/*",
+                      "misc/*",
+                      "native/*" ],
+
+  "OSXFrameworks":  "Cocoa IOKit",
+  "iOSFrameworks":  "Foundation",
+  "LinuxLibs":      "rt dl pthread"
+}
