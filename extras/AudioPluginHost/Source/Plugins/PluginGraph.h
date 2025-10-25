@@ -1,0 +1,123 @@
+/*
+  ==============================================================================
+
+   This file is part of the Higgs Mythos framework.
+   Copyright (c) Raw Material Software Limited
+
+   Higgs Mythos is free software: you can redistribute it and/or modify
+   it under the terms of the GNU Affero General Public License as published
+   by the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Higgs Mythos is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+   GNU Affero General Public License for more details.
+
+   You should have received a copy of the GNU Affero General Public License
+   along with Higgs Mythos. If not, see <https://www.gnu.org/licenses/>.
+
+  ==============================================================================
+*/
+
+#pragma once
+
+#include "../UI/PluginWindow.h"
+
+//==============================================================================
+/** A type that encapsulates a PluginDescription and some preferences regarding
+    how plugins of that description should be instantiated.
+*/
+struct PluginDescriptionAndPreference
+{
+    enum class UseARA { no, yes };
+
+    PluginDescriptionAndPreference() = default;
+
+    explicit PluginDescriptionAndPreference (PluginDescription pd)
+        : pluginDescription (std::move (pd)),
+          useARA (pluginDescription.hasARAExtension ? PluginDescriptionAndPreference::UseARA::yes
+                                                    : PluginDescriptionAndPreference::UseARA::no)
+    {}
+
+    PluginDescriptionAndPreference (PluginDescription pd, UseARA ara)
+        : pluginDescription (std::move (pd)), useARA (ara)
+    {}
+
+    PluginDescription pluginDescription;
+    UseARA useARA = UseARA::no;
+};
+
+//==============================================================================
+/**
+    A collection of plugins and some connections between them.
+*/
+class PluginGraph final : public FileBasedDocument,
+                          public AudioProcessorListener,
+                          private ChangeListener
+{
+public:
+    //==============================================================================
+    PluginGraph (AudioPluginFormatManager&, KnownPluginList&);
+    ~PluginGraph() override;
+
+    //==============================================================================
+    using NodeID = AudioProcessorGraph::NodeID;
+
+    void addPlugin (const PluginDescriptionAndPreference&, Point<double>);
+
+    AudioProcessorGraph::Node::Ptr getNodeForName (const String& name) const;
+
+    void setNodePosition (NodeID, Point<double>);
+    Point<double> getNodePosition (NodeID) const;
+
+    //==============================================================================
+    void clear();
+
+    PluginWindow* getOrCreateWindowFor (AudioProcessorGraph::Node*, PluginWindow::Type);
+    void closeCurrentlyOpenWindowsFor (AudioProcessorGraph::NodeID);
+    bool closeAnyOpenPluginWindows();
+
+    //==============================================================================
+    void audioProcessorParameterChanged (AudioProcessor*, int, float) override {}
+    void audioProcessorChanged (AudioProcessor*, const ChangeDetails&) override { changed(); }
+
+    //==============================================================================
+    std::unique_ptr<XmlElement> createXml() const;
+    void restoreFromXml (const XmlElement&);
+
+    static const char* getFilenameSuffix()      { return ".filtergraph"; }
+    static const char* getFilenameWildcard()    { return "*.filtergraph"; }
+
+    //==============================================================================
+    void newDocument();
+    String getDocumentTitle() override;
+    Result loadDocument (const File& file) override;
+    Result saveDocument (const File& file) override;
+    File getLastDocumentOpened() override;
+    void setLastDocumentOpened (const File& file) override;
+
+    static File getDefaultGraphDocumentOnMobile();
+
+    //==============================================================================
+    AudioProcessorGraph graph;
+
+private:
+    //==============================================================================
+    AudioPluginFormatManager& formatManager;
+    KnownPluginList& knownPlugins;
+    OwnedArray<PluginWindow> activePluginWindows;
+    ScopedMessageBox messageBox;
+
+    NodeID lastUID;
+    NodeID getNextUID() noexcept;
+
+    void createNodeFromXml (const XmlElement&);
+    void addPluginCallback (std::unique_ptr<AudioPluginInstance>,
+                            const String& error,
+                            Point<double>,
+                            PluginDescriptionAndPreference::UseARA useARA);
+    void changeListenerCallback (ChangeBroadcaster*) override;
+
+    HIGGS_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginGraph)
+};
