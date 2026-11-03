@@ -27,11 +27,14 @@ panel de datos a la derecha, en naranja sobre fondo oscuro. Un bloque de
 código de Markdown no admite colores ni columnas fiables en GitHub, así que
 el banner se generó como imagen SVG
 (`documentacion/contenido/assets/higgs_mythos_banner.svg`): la mascota y el
-panel son texto monoespaciado con `xml:space="preserve"` sobre fondo oscuro.
+panel son texto monoespaciado con `xml:space="preserve"` en tres tonos de
+gris sobre fondo oscuro (la paleta naranja de la primera versión se cambió a
+gris a petición del autor).
 El título en letras de bloque de la primera versión del banner se retiró a
 petición del autor, de modo que el banner mide 1040×520 píxeles y empieza
 directamente por la mascota. El panel resume datos verificables
-del framework: versión 9.0.5 y licencia, las cinco plataformas, los formatos
+del framework: nombre y licencia (sin número de versión, para que el banner
+no quede desactualizado al publicar una nueva), las cinco plataformas, los formatos
 de plug-in, los veinticuatro módulos, las herramientas de `extras`, los dos
 comandos de compilación y las direcciones del sitio de documentación y del
 repositorio. Los ocho README muestran la imagen con un `<img>` a ancho
