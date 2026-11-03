@@ -28,8 +28,13 @@ código de Markdown no admite colores ni columnas fiables en GitHub, así que
 el banner se generó como imagen SVG
 (`documentacion/contenido/assets/higgs_mythos_banner.svg`): la mascota y el
 panel son texto monoespaciado con `xml:space="preserve"` en tres tonos de
-gris sobre fondo oscuro (la paleta naranja de la primera versión se cambió a
-gris a petición del autor).
+gris medio sobre fondo transparente (la paleta naranja y el fondo oscuro de
+la primera versión se cambiaron a petición del autor). Los grises son fijos
+y no dependen del tema del visor: se eligieron tonos medios legibles tanto
+sobre el blanco del tema claro de GitHub como sobre el fondo del tema
+oscuro, porque una consulta `prefers-color-scheme` dentro de un SVG
+incrustado sigue el tema del sistema y no el de GitHub, y daba texto claro
+sobre fondo claro en la previsualización.
 El título en letras de bloque de la primera versión del banner se retiró a
 petición del autor, de modo que el banner mide 1040×520 píxeles y empieza
 directamente por la mascota. El panel resume datos verificables
@@ -46,10 +51,8 @@ texto.
 Se descartó el bloque ```` ```ansi ```` con códigos de color porque solo lo
 colorea GitHub y ensucia el README en cualquier otro visor (y en el contexto
 que `CLAUDE.md` importa). Se descartó también un PNG porque pierde nitidez
-al escalar y pesa más que el SVG (24 KB). El SVG mantiene el aspecto en
-tema claro y oscuro porque lleva su propio fondo, y se regenera con un
-script a partir del archivo de texto de la mascota si el dibujo o el panel
-cambian.
+al escalar y pesa más que el SVG (24 KB). El SVG se regenera con un script
+a partir del archivo de texto de la mascota si el dibujo o el panel cambian.
 
 ## Tipo de Cambio
 
@@ -77,9 +80,10 @@ cambian.
 ## Verificación
 
 - El SVG se previsualizó en Chrome a través de un servidor HTTP local
-  temporal, antes y después de retirar el título: la mascota de 39 líneas y
-  el panel se muestran completos y alineados en 1040×520 píxeles, sin
-  solapamientos; el servidor y la pestaña se cerraron después.
+  temporal, en cada iteración (con título, sin título, en gris y con fondo
+  transparente sobre un fondo blanco y otro oscuro): la mascota de 39 líneas
+  y el panel se muestran completos, alineados y legibles en 1040×520
+  píxeles, sin solapamientos; el servidor y la pestaña se cerraron después.
 - Inserción y sustitución hechas con scripts del scratchpad; `git diff
   --stat` muestra el mismo número de líneas tocadas en cada uno de los ocho
   archivos.
