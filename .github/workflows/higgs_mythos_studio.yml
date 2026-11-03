@@ -1,0 +1,85 @@
+name: HIGGS Mythos Studio Build
+
+# Builds release executables of Mythos Studio for Windows, macOS and Linux and
+# uploads them as workflow artifacts.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - extras/MythosStudio/**
+      - .github/workflows/higgs_mythos_studio.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mythos-studio-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Mythos Studio (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+            artifact: MythosStudio-Windows-x64
+            configure: -A x64
+          - name: macOS universal
+            os: macos-latest
+            artifact: MythosStudio-macOS-universal
+            configure: -G Ninja -DCMAKE_BUILD_TYPE=Release "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"
+          - name: Linux x64
+            os: ubuntu-latest
+            artifact: MythosStudio-Linux-x64
+            configure: -G Ninja -DCMAKE_BUILD_TYPE=Release
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build \
+            libasound2-dev libjack-jackd2-dev ladspa-sdk libcurl4-openssl-dev \
+            libfreetype-dev libfontconfig1-dev \
+            libx11-dev libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev \
+            libxrandr-dev libxrender-dev libxi-dev \
+            libegl-dev libglu1-mesa-dev mesa-common-dev
+
+      - name: Install Ninja
+        if: runner.os == 'macOS'
+        run: brew install ninja
+
+      - name: Configure
+        shell: bash
+        run: cmake -S . -B build -DHIGGS_BUILD_EXTRAS=ON ${{ matrix.configure }}
+
+      - name: Build
+        shell: bash
+        run: cmake --build build --target MythosStudio --config Release --parallel
+
+      - name: Package
+        shell: bash
+        run: |
+          artefacts="build/extras/MythosStudio/MythosStudio_artefacts/Release"
+          mkdir -p dist
+          case "${{ runner.os }}" in
+            Windows) cp "$artefacts/MythosStudio.exe" dist/ ;;
+            macOS)   ditto -c -k --keepParent "$artefacts/MythosStudio.app" dist/MythosStudio.app.zip ;;
+            Linux)   cp "$artefacts/MythosStudio" dist/ && chmod +x dist/MythosStudio ;;
+          esac
+          cp LICENSE.md dist/
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/
+          if-no-files-found: error
