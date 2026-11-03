@@ -1,0 +1,98 @@
+{
+  "higgs_core": {
+    "resumen": "El conjunto esencial de clases básicas que necesitan todos los demás módulos: texto (`String`, `StringArray`), contenedores (`Array`, `OwnedArray`, `HashMap`), memoria y punteros inteligentes, hilos y sincronización, archivos y flujos, red (`URL`, sockets), XML, JSON, ZIP, tiempo, matemáticas, información del sistema, registro y pruebas unitarias.",
+    "guias": [["Memoria, cadenas y contenedores", "../conceptos/nucleo.md"], ["Hilos y concurrencia", "../conceptos/hilos.md"], ["Archivos, red y serialización", "../guias/archivos-red.md"], ["Pruebas unitarias", "../guias/pruebas.md"], ["Localización", "../guias/localizacion.md"]]
+  },
+  "higgs_events": {
+    "resumen": "La infraestructura del bucle de mensajes de la aplicación: `MessageManager`, temporizadores, mensajes asíncronos, difusores y oyentes, la clase base de aplicación, comunicación entre procesos y descubrimiento de servicios en red.",
+    "guias": [["Bucle de mensajes y eventos", "../conceptos/eventos.md"]]
+  },
+  "higgs_data_structures": {
+    "resumen": "Estructuras de datos para el modelo de la aplicación: `ValueTree`, `Value`, `CachedValue`, el sistema de deshacer/rehacer (`UndoManager`) y la gestión de preferencias (`ApplicationProperties`, `PropertiesFile`).",
+    "guias": [["Modelo de datos y deshacer", "../guias/datos.md"]]
+  },
+  "higgs_cryptography": {
+    "resumen": "Funciones criptográficas básicas: claves RSA, cifrado Blowfish, números primos y los resúmenes MD5, SHA-256 y Whirlpool.",
+    "guias": [["Otros módulos", "../guias/otros-modulos.md#criptografia"]]
+  },
+  "higgs_graphics": {
+    "resumen": "El motor de gráficos 2D: contexto `Graphics`, geometría (`Path`, `Rectangle`, `AffineTransform`), colores y degradados, fuentes y conformación de texto (HarfBuzz, SheenBidi), imágenes (PNG, JPEG, GIF, WebP), gráficos vectoriales y SVG (`Drawable`) y efectos.",
+    "guias": [["Gráficos 2D, fuentes e imágenes", "../guias/graficos.md"]]
+  },
+  "higgs_gui_basics": {
+    "resumen": "Las clases fundamentales de la interfaz de usuario: `Component`, ventanas, ratón, teclado y táctil, *widgets* (botones, deslizadores, etiquetas, editores de texto, listas, tablas, árboles), menús, *layouts* (`FlexBox`, `Grid`), *look-and-feel*, comandos, selectores de archivos, diálogos y accesibilidad.",
+    "guias": [["Interfaz gráfica", "../guias/interfaz-grafica.md"], ["Accesibilidad", "../guias/accesibilidad.md"]]
+  },
+  "higgs_gui_extra": {
+    "resumen": "Clases de interfaz para tareas especializadas: editor de código con resaltado de sintaxis, `WebBrowserComponent` con integración nativa JavaScript/C++, selector de colores, editor de atajos, paneles de preferencias, icono en la bandeja del sistema, notificaciones push, editor de constantes en caliente y utilidades de documentos.",
+    "guias": [["Interfaces web (WebView)", "../guias/web.md"], ["Interfaz gráfica", "../guias/interfaz-grafica.md"]]
+  },
+  "higgs_animation": {
+    "resumen": "Sistema declarativo de animación: constructores inmutables de animaciones (`ValueAnimatorBuilder`, `AnimatorSetBuilder`), funciones de suavizado (`Easings`) y actualizadores sincronizados con el refresco de pantalla.",
+    "guias": [["Animación", "../guias/animacion.md"]]
+  },
+  "higgs_opengl": {
+    "resumen": "Renderizado OpenGL dentro de componentes: `OpenGLContext`, `OpenGLRenderer`, *shaders*, texturas, *framebuffers*, imágenes en GPU y matemáticas 3D. En Linux usa EGL y admite OpenGL ES.",
+    "guias": [["OpenGL", "../guias/opengl.md"]]
+  },
+  "higgs_video": {
+    "resumen": "Reproducción de vídeo (`VideoComponent`) y captura de cámara (`CameraDevice`) en macOS, iOS, Windows y Android.",
+    "guias": [["Vídeo y cámara", "../guias/video.md"]]
+  },
+  "higgs_audio_basics": {
+    "resumen": "Las clases de datos de audio y MIDI: `AudioBuffer`, conversiones de formato, operaciones vectoriales, fuentes de audio, sintetizador, MIDI 1.0, MPE, paquetes universales de MIDI 2.0 (UMP), información del cabezal de reproducción y utilidades (`SmoothedValue`, `ADSR`, `Reverb`, `Decibels`, interpoladores).",
+    "guias": [["Audio y dispositivos", "../guias/audio.md"], ["MIDI, MPE y MIDI 2.0", "../guias/midi.md"]]
+  },
+  "higgs_audio_devices": {
+    "resumen": "Entrada y salida de audio y MIDI: `AudioDeviceManager`, tipos de dispositivo por plataforma (CoreAudio, WASAPI, DirectSound, ASIO, ALSA, JACK, Oboe, OpenSL ES), `MidiInput`/`MidiOutput`, extremos y sesiones UMP, y fuentes de reproducción (`AudioTransportSource`).",
+    "guias": [["Audio y dispositivos", "../guias/audio.md"], ["MIDI, MPE y MIDI 2.0", "../guias/midi.md"]]
+  },
+  "higgs_audio_formats": {
+    "resumen": "Lectura y escritura de archivos de audio: WAV, AIFF, FLAC, Ogg Vorbis, Opus, MP3, CoreAudio, Windows Media y LAME; gestor de formatos, lectores y escritores (incluido el escritor en hilo de fondo) y un sampler sencillo.",
+    "guias": [["Audio y dispositivos", "../guias/audio.md#leer-y-reproducir-archivos"]]
+  },
+  "higgs_audio_processors_headless": {
+    "resumen": "La parte sin interfaz del sistema de procesadores: `AudioProcessor`, parámetros y grupos, `AudioProcessorGraph`, `AudioPluginInstance`, formatos de alojamiento (VST3, VST2, AU, LV2, LADSPA, ARA) y extensiones de cliente por formato. Permite cargar y ejecutar plug-ins en herramientas sin interfaz gráfica.",
+    "guias": [["Plug-ins de audio", "../guias/plugins.md"], ["Alojar plug-ins (hosting)", "../guias/hosting.md"]]
+  },
+  "higgs_audio_processors": {
+    "resumen": "Amplía `higgs_audio_processors_headless` con la parte de interfaz: `AudioProcessorEditor`, `GenericAudioProcessorEditor`, `AudioProcessorValueTreeState` y sus *attachments*, *attachments* de parámetros (incluidos los de interfaces web), escaneo de plug-ins y componentes de lista de plug-ins.",
+    "guias": [["Plug-ins de audio", "../guias/plugins.md"], ["Alojar plug-ins (hosting)", "../guias/hosting.md"]]
+  },
+  "higgs_audio_plugin_client": {
+    "resumen": "Los *wrappers* que convierten un `AudioProcessor` en un plug-in de cada formato: VST2, VST3, AU, AUv3, AAX, LV2, Unity y aplicación Standalone. Normalmente no se usa directamente: `higgs_add_plugin` lo enlaza en cada target de formato.",
+    "guias": [["Plug-ins de audio", "../guias/plugins.md"], ["Tu primer plug-in", "../primeros-pasos/primer-plugin.md"]]
+  },
+  "higgs_audio_utils": {
+    "resumen": "Utilidades de audio con interfaz y misceláneas: `AudioAppComponent`, `AudioDeviceSelectorComponent`, `AudioThumbnail`, `AudioVisualiserComponent`, teclados MIDI y MPE, emparejamiento de dispositivos MIDI Bluetooth, reproductores de audio y lectura/grabación de CD.",
+    "guias": [["Audio y dispositivos", "../guias/audio.md"]]
+  },
+  "higgs_dsp": {
+    "resumen": "Procesamiento digital de señal: filtros IIR, FIR y TPT, osciladores, ganancia, dinámica, *chorus*, *phaser*, reverberación, líneas de retardo, convolución, sobremuestreo, FFT, ventanas, diseño de filtros, aproximaciones matemáticas rápidas y registros SIMD, todo con el modelo `prepare`/`process`/`reset`.",
+    "guias": [["Procesamiento DSP", "../guias/dsp.md"]]
+  },
+  "higgs_midi_ci": {
+    "resumen": "Implementación de MIDI Capability Inquiry (MIDI-CI): descubrimiento de dispositivos, configuración de perfiles, intercambio de propiedades y consultas de proceso, con codificación y análisis de los mensajes.",
+    "guias": [["MIDI, MPE y MIDI 2.0", "../guias/midi.md#midi-ci"]]
+  },
+  "higgs_osc": {
+    "resumen": "Implementación de Open Sound Control: emisor y receptor UDP, mensajes, paquetes, argumentos, patrones de dirección y etiquetas de tiempo.",
+    "guias": [["Otros módulos", "../guias/otros-modulos.md#osc"]]
+  },
+  "higgs_javascript": {
+    "resumen": "Un intérprete de JavaScript (basado en QuickJS a través de CHOC) para ejecutar scripts y exponerles objetos nativos.",
+    "guias": [["Otros módulos", "../guias/otros-modulos.md#javascript"]]
+  },
+  "higgs_box2d": {
+    "resumen": "El motor de física 2D Box2D y un renderizador que dibuja sus mundos con `Graphics`.",
+    "guias": [["Otros módulos", "../guias/otros-modulos.md#box2d"]]
+  },
+  "higgs_analytics": {
+    "resumen": "Recopilación de analítica de uso y envío por lotes a destinos configurables desde un hilo de fondo.",
+    "guias": [["Otros módulos", "../guias/otros-modulos.md#analitica"]]
+  },
+  "higgs_product_unlocking": {
+    "resumen": "Compras integradas en las tiendas de Apple y Google, y un sistema de licencias con desbloqueo en línea y archivos de clave firmados.",
+    "guias": [["Otros módulos", "../guias/otros-modulos.md#compras-integradas-y-desbloqueo-de-productos"]]
+  }
+}

@@ -1,0 +1,63 @@
+/* Ajustes visuales de la documentación de Higgs Mythos. */
+
+:root {
+  --hm-card-border: rgba(103, 58, 183, 0.25);
+}
+
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 1.8rem;
+  border-radius: 0.3rem;
+}
+
+/* Portada */
+.hm-hero {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin: 1rem 0 2rem;
+}
+
+.hm-hero > p:first-child {
+  flex: 0 0 96px;
+}
+
+.hm-hero img {
+  display: block;
+  width: 96px;
+  height: 96px;
+  max-width: none;
+  border-radius: 1rem;
+}
+
+.hm-hero p {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+@media screen and (max-width: 600px) {
+  .hm-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* Tablas de referencia: código sin cortes feos */
+.md-typeset table:not([class]) td code {
+  word-break: normal;
+  white-space: nowrap;
+}
+
+.md-typeset table:not([class]) td:last-child code {
+  white-space: normal;
+}
+
+/* Insignias de módulo */
+.hm-badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  margin: 0 0.25rem 0.25rem 0;
+  border: 1px solid var(--hm-card-border);
+  border-radius: 1rem;
+  font-size: 0.75rem;
+}

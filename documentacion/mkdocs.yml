@@ -1,0 +1,193 @@
+site_name: Higgs Mythos
+site_description: >-
+  Documentación en español de Higgs Mythos, el framework C++ multiplataforma
+  para aplicaciones de escritorio, móviles y plug-ins de audio.
+site_author: Jose Alexis Correa Valencia
+site_url: https://jalexiscv.github.io/higgs-mythos/
+repo_url: https://github.com/jalexiscv/higgs-mythos
+repo_name: jalexiscv/higgs-mythos
+edit_uri: edit/main/documentacion/contenido/
+docs_dir: contenido
+copyright: Higgs Mythos · AGPL-3.0-or-later
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+theme:
+  name: material
+  language: es
+  logo: assets/higgs_icon.png
+  favicon: assets/higgs_icon.png
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Cambiar a modo oscuro
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Cambiar a modo claro
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - navigation.tracking
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+    - content.tabs.link
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/jalexiscv/higgs-mythos
+
+plugins:
+  - search:
+      lang: es
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      title: En esta página
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+nav:
+  - Inicio: index.md
+  - Primeros pasos:
+      - primeros-pasos/index.md
+      - Requisitos del sistema: primeros-pasos/requisitos.md
+      - Instalación: primeros-pasos/instalacion.md
+      - Tu primera aplicación gráfica: primeros-pasos/primera-aplicacion.md
+      - Aplicación de consola: primeros-pasos/aplicacion-consola.md
+      - Tu primer plug-in de audio: primeros-pasos/primer-plugin.md
+      - Compilar los ejemplos: primeros-pasos/compilar-ejemplos.md
+  - Conceptos:
+      - conceptos/index.md
+      - Arquitectura del framework: conceptos/arquitectura.md
+      - Convenciones de nombres: conceptos/convenciones.md
+      - Bucle de mensajes y eventos: conceptos/eventos.md
+      - Hilos y concurrencia: conceptos/hilos.md
+      - Memoria, cadenas y contenedores: conceptos/nucleo.md
+      - Depuración y diagnóstico: conceptos/depuracion.md
+  - Guías:
+      - guias/index.md
+      - Interfaz gráfica: guias/interfaz-grafica.md
+      - Gráficos 2D, fuentes e imágenes: guias/graficos.md
+      - Audio y dispositivos: guias/audio.md
+      - MIDI, MPE y MIDI 2.0: guias/midi.md
+      - Procesamiento DSP: guias/dsp.md
+      - Plug-ins de audio: guias/plugins.md
+      - Alojar plug-ins (hosting): guias/hosting.md
+      - ARA: guias/ara.md
+      - Modelo de datos y deshacer: guias/datos.md
+      - Archivos, red y serialización: guias/archivos-red.md
+      - Interfaces web (WebView): guias/web.md
+      - OpenGL: guias/opengl.md
+      - Animación: guias/animacion.md
+      - Vídeo y cámara: guias/video.md
+      - Accesibilidad: guias/accesibilidad.md
+      - Localización: guias/localizacion.md
+      - Pruebas unitarias: guias/pruebas.md
+      - Otros módulos: guias/otros-modulos.md
+  - Compilación:
+      - compilacion/index.md
+      - API de CMake: compilacion/cmake-api.md
+      - Plataformas: compilacion/plataformas.md
+      - Dependencias en Linux: compilacion/linux.md
+      - Opciones de configuración: compilacion/opciones.md
+      - Formato de módulos: compilacion/formato-modulos.md
+      - Crear un módulo propio: compilacion/crear-modulo.md
+      - Proyectos PIP: compilacion/pip.md
+  - Herramientas:
+      - herramientas/index.md
+      - Mythos Studio: herramientas/mythos-studio.md
+      - higgsaide: herramientas/higgsaide.md
+      - AudioPluginHost: herramientas/audio-plugin-host.md
+      - UnitTestRunner: herramientas/unit-test-runner.md
+      - Otras utilidades: herramientas/otras.md
+  - Módulos:
+      - modulos/index.md
+      - higgs_core: modulos/higgs_core.md
+      - higgs_events: modulos/higgs_events.md
+      - higgs_data_structures: modulos/higgs_data_structures.md
+      - higgs_cryptography: modulos/higgs_cryptography.md
+      - higgs_graphics: modulos/higgs_graphics.md
+      - higgs_gui_basics: modulos/higgs_gui_basics.md
+      - higgs_gui_extra: modulos/higgs_gui_extra.md
+      - higgs_animation: modulos/higgs_animation.md
+      - higgs_opengl: modulos/higgs_opengl.md
+      - higgs_video: modulos/higgs_video.md
+      - higgs_audio_basics: modulos/higgs_audio_basics.md
+      - higgs_audio_devices: modulos/higgs_audio_devices.md
+      - higgs_audio_formats: modulos/higgs_audio_formats.md
+      - higgs_audio_processors_headless: modulos/higgs_audio_processors_headless.md
+      - higgs_audio_processors: modulos/higgs_audio_processors.md
+      - higgs_audio_plugin_client: modulos/higgs_audio_plugin_client.md
+      - higgs_audio_utils: modulos/higgs_audio_utils.md
+      - higgs_dsp: modulos/higgs_dsp.md
+      - higgs_midi_ci: modulos/higgs_midi_ci.md
+      - higgs_osc: modulos/higgs_osc.md
+      - higgs_javascript: modulos/higgs_javascript.md
+      - higgs_box2d: modulos/higgs_box2d.md
+      - higgs_analytics: modulos/higgs_analytics.md
+      - higgs_product_unlocking: modulos/higgs_product_unlocking.md
+  - Ejemplos:
+      - ejemplos/index.md
+  - Proyecto:
+      - proyecto/index.md
+      - Novedades por versión: proyecto/novedades.md
+      - Cambios incompatibles 9.x: proyecto/cambios-incompatibles.md
+      - Licencia: proyecto/licencia.md
+      - Dependencias de terceros: proyecto/dependencias.md
+      - Contribuir: proyecto/contribuir.md
+      - Seguridad: proyecto/seguridad.md
+      - Integración continua: proyecto/integracion-continua.md
+      - Mantener esta documentación: proyecto/documentacion.md
+      - Glosario: proyecto/glosario.md
+      - Preguntas frecuentes: proyecto/faq.md

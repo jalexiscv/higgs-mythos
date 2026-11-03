@@ -53,6 +53,13 @@ reads and writes `.mythos` project files, and its command-line companion is
 `higgsaide`. Build it from `extras/MythosStudio/Builds` (Visual Studio, Xcode or
 Linux Makefile projects) or through CMake with `-DHIGGS_BUILD_EXTRAS=ON`.
 
+### Spanish Documentation
+
+A complete user guide in Spanish (getting started, guides for every area of the
+framework, the CMake API, tools and a reference page for each module) is
+published at <https://jalexiscv.github.io/higgs-mythos/>. Its sources live in
+[documentacion](/documentacion).
+
 ### API Documentation
 
 The API documentation is generated directly from the Doxygen comments in the
