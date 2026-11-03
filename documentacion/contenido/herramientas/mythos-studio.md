@@ -19,6 +19,20 @@ de comandos para automatizar tareas.
     Abre el proyecto correspondiente de `extras/MythosStudio/Builds`: `MacOSX` (Xcode),
     `VisualStudio2019`, `VisualStudio2022`, `VisualStudio2026` o `LinuxMakefile`.
 
+## Ejecutables precompilados
+
+El flujo de GitHub Actions `HIGGS Mythos Studio Build` (`.github/workflows/higgs_mythos_studio.yml`)
+compila Mythos Studio en modo *Release* para **Windows x64**, **macOS universal** (arm64 + x86_64)
+y **Linux x64** cada vez que cambia `extras/MythosStudio` en `main`, o a mano desde la pestaña
+*Actions* (*Run workflow*). Los ejecutables se descargan como *artifacts* de la ejecución:
+`MythosStudio-Windows-x64` (`MythosStudio.exe`), `MythosStudio-macOS-universal`
+(`MythosStudio.app.zip`) y `MythosStudio-Linux-x64` (`MythosStudio`).
+
+!!! note "Binarios sin firmar"
+    Los ejecutables no están firmados digitalmente: Windows SmartScreen puede mostrar un aviso
+    (*Más información → Ejecutar de todas formas*) y en macOS hay que abrir la aplicación con
+    clic derecho → *Abrir* la primera vez.
+
 ## Exportadores
 
 | Exportador | Genera |
