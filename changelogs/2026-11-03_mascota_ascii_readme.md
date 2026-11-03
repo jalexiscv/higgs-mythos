@@ -1,9 +1,9 @@
-# Mascota en ASCII art y banner de cabecera en los README
+# Mascota en ASCII art y banner de cabecera en los README y en el sitio de documentación
 
 **Fecha:** 2026-11-03
 **Versión:** 9.0.5
 **Área:** docs > README
-**Tiempo laborado:** 4 horas
+**Tiempo laborado:** 5 horas
 **Autor:** Jose Alexis Correa Valencia <jalexiscv@gmail.com>
 **Asistencia:** Agente de IA (Claude)
 
@@ -71,6 +71,14 @@ a partir del archivo de texto de la mascota si el dibujo o el panel cambian.
   de idioma y la introducción (el bloque de código de la primera iteración se
   sustituyó por la imagen).
 
+### [MODIFICADO] `documentacion/contenido/index.md`
+- El banner se muestra también en la portada del sitio de documentación
+  (<https://jalexiscv.github.io/higgs-mythos/>), entre el título y el bloque
+  de presentación, con la clase `hm-banner`.
+
+### [MODIFICADO] `documentacion/contenido/stylesheets/extra.css`
+- Regla `.hm-banner`: imagen a ancho completo hasta 1040 píxeles, centrada.
+
 ### [NUEVO] `changelogs/2026-11-03_mascota_ascii_readme.md`
 - Este registro.
 
@@ -91,6 +99,9 @@ a partir del archivo de texto de la mascota si el dibujo o el panel cambian.
   registro 2: ninguna sección queda por debajo del mínimo y cero enlaces
   rotos. Los dos archivos nuevos existen en la ruta que los README
   referencian.
+- La portada del sitio se publica con el flujo `HIGGS Docs Pages`, que se
+  dispara al subir cambios de `documentacion/` a `main`; no se ejecutó
+  MkDocs en esta máquina.
 - Sin cambios de código: no se compiló ningún objetivo ni se ejecutó
   `UnitTestRunner`.
 

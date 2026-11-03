@@ -11,6 +11,14 @@
 }
 
 /* Portada */
+.hm-banner {
+  display: block;
+  width: 100%;
+  max-width: 1040px;
+  height: auto;
+  margin: 0.5rem auto 1.5rem;
+}
+
 .hm-hero {
   display: flex;
   align-items: center;

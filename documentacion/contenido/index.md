@@ -6,6 +6,8 @@ hide:
 
 # Higgs Mythos
 
+<img class="hm-banner" src="assets/higgs_mythos_banner.svg" alt="La mascota de Higgs Mythos junto a un resumen del framework">
+
 <div class="hm-hero" markdown>
 <img src="assets/higgs_icon.png" alt="Monograma HM de Higgs Mythos" width="96" height="96">
 <p markdown>**Higgs Mythos** (abreviado **HIGGS** en el código y en los nombres de los módulos) es un
