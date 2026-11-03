@@ -13,6 +13,12 @@ framework conventions.
   integration notes.
 - [Linux Dependencies.md](Linux%20Dependencies.md) — packages required to build
   on Linux.
+- [protocols/](protocols/) — working protocols for contributors and AI agents
+  (in Spanish): [Documentations.md](protocols/Documentations.md),
+  [Changelogs.md](protocols/Changelogs.md) and the agent protocols in
+  [protocols/Fable/](protocols/Fable/) (Execution, Decisions, Debugging, Review,
+  Security, Continuity). The change history they govern lives in
+  [changelogs/](../changelogs/).
 
 The modules live in the `modules` subdirectory of the repository, and the CMake
 example projects in `examples/CMake`.
